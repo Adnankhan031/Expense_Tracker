@@ -93,10 +93,28 @@ export default function ChatScreen() {
     }, [refresh, version])
   );
 
+  /**
+   * Pin the thread to the newest message.
+   *
+   * Two frames, because a row's height is not known until after it lays out and
+   * scrolling before that lands short of the bottom.
+   */
+  const scrollToEnd = useCallback((animated = true) => {
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToEnd({ animated });
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated }));
+    });
+  }, []);
+
   useEffect(() => {
-    const id = setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 120);
-    return () => clearTimeout(id);
-  }, [messages.length]);
+    scrollToEnd(false);
+  }, [messages.length, scrollToEnd]);
+
+  // The keyboard shrinks the viewport without changing content height, so
+  // nothing else fires — without this the latest messages slide out of view.
+  useEffect(() => {
+    if (kb > 0) scrollToEnd(true);
+  }, [kb, scrollToEnd]);
 
   const send = () => {
     const text = input.trim();
@@ -145,6 +163,7 @@ export default function ChatScreen() {
 
     reload();
     refresh();
+    scrollToEnd(true);
   };
 
   const removeTxn = (msg: ChatMessage) => {
@@ -392,10 +411,11 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={(m) => m.id}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: space.lg, paddingBottom: 12, flexGrow: 1 }}
+          contentContainerStyle={{ padding: space.lg, paddingBottom: 12, flexGrow: messages.length ? 0 : 1 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+          onContentSizeChange={() => scrollToEnd(true)}
+          onLayout={() => scrollToEnd(false)}
           ListEmptyComponent={
             <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 90 }}>
               <EmptyState
