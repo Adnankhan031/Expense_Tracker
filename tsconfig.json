@@ -5,7 +5,6 @@
   },
   "exclude": [
     ".expo-export",
-    "node_modules",
-    "web"
+    "node_modules"
   ]
 }
