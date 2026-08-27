@@ -23,6 +23,7 @@ import {
   listMessages,
   softDeleteTxn,
   sumInRange,
+  dailyTotals,
   searchTxns,
 } from '../../src/db';
 import { parseInput } from '../../src/parser';
@@ -32,16 +33,11 @@ import { radius, space, useTheme } from '../../src/theme';
 import { Chip, EmptyState, Money, Screen, tap, tapSuccess } from '../../src/ui';
 import { DatePickerSheet } from '../../src/pickers';
 import { TxnEditor } from '../../src/TxnEditor';
-import { dayLabel, formatMoney, shortDayLabel, todayLocal } from '../../src/format';
+import { WEEKDAYS_SHORT, addDays, dayLabel, formatMoney, fromLocalDate, shortDayLabel, todayLocal } from '../../src/format';
 import { CategoryIcon, IconTile } from '../../src/icons';
 import { useKeyboardHeight } from '../../src/useKeyboard';
 
-const HINTS = [
-  { text: 'lunch 1200', note: 'the basics' },
-  { text: 'groceries 4800 and train 320', note: 'two at once' },
-  { text: 'rent 85000 on 1', note: 'a past date' },
-  { text: 'salary 300000 received', note: 'income' },
-];
+
 
 export default function ChatScreen() {
   const t = useTheme();
@@ -55,6 +51,7 @@ export default function ChatScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [todayTotal, setTodayTotal] = useState(0);
+  const [week, setWeek] = useState<{ date: string; total: number }[]>([]);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const inputRef = useRef<TextInput>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -86,6 +83,14 @@ export default function ChatScreen() {
     }
     const today = todayLocal();
     setTodayTotal(sumInRange(today, today, 'expense'));
+
+    // last 7 days, so the header can show today in context rather than alone
+    const from = addDays(today, -6);
+    const totals = new Map(dailyTotals(from, today).map((d) => [d.local_date, d.total]));
+    setWeek(Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(from, i);
+      return { date, total: totals.get(date) ?? 0 };
+    }));
   }, []);
 
   useFocusEffect(
@@ -306,32 +311,93 @@ export default function ChatScreen() {
     </View>
   );
 
+  const weekMax = Math.max(1, ...week.map((d) => d.total));
+  const weekAvg = week.length ? week.reduce((a, b) => a + b.total, 0) / week.length : 0;
+  const vsUsual = weekAvg > 0 ? Math.round(((todayTotal - weekAvg) / weekAvg) * 100) : null;
+
   const header = useMemo(
     () => (
-      <View style={{ paddingHorizontal: space.lg, paddingTop: 6, paddingBottom: 10, gap: 10 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: t.dim, fontSize: 12, fontWeight: '600' }}>Spent today</Text>
-            <Money minor={todayTotal} size={26} />
+      <View style={{ paddingHorizontal: space.lg, paddingTop: 4, paddingBottom: 10 }}>
+        <View
+          style={{
+            backgroundColor: t.surface,
+            borderRadius: radius.lg,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: t.line,
+            padding: space.lg,
+            gap: 14,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: t.dim, fontSize: 11.5, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                Spent today
+              </Text>
+              <Money minor={todayTotal} size={34} style={{ marginTop: 3 }} />
+              {vsUsual !== null && todayTotal > 0 && (
+                <View
+                  style={{
+                    alignSelf: 'flex-start',
+                    marginTop: 7,
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: radius.pill,
+                    backgroundColor: vsUsual > 0 ? t.downSoft : t.upSoft,
+                  }}
+                >
+                  <Text style={{ color: vsUsual > 0 ? t.down : t.up, fontSize: 11, fontWeight: '700' }}>
+                    {vsUsual > 0 ? '▲' : '▼'} {Math.abs(vsUsual)}% vs your usual day
+                  </Text>
+                </View>
+              )}
+              {todayTotal === 0 && (
+                <Text style={{ color: t.faint, fontSize: 12, marginTop: 6 }}>Nothing logged yet today.</Text>
+              )}
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable
+                onPress={() => { tap(); setCreating(true); }}
+                style={{ width: 36, height: 36, borderRadius: radius.md, backgroundColor: t.sunken, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Plus size={18} color={t.dim} />
+              </Pressable>
+              {messages.length > 0 && (
+                <Pressable
+                  onPress={() => { tap(); clearMessages(); refresh(); }}
+                  style={{ width: 36, height: 36, borderRadius: radius.md, backgroundColor: t.sunken, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Trash2 size={16} color={t.dim} />
+                </Pressable>
+              )}
+            </View>
           </View>
-          <Pressable
-            onPress={() => { tap(); setCreating(true); }}
-            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: t.sunken, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Plus size={20} color={t.dim} />
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              tap();
-              clearMessages();
-              refresh();
-            }}
-            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: t.sunken, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Trash2 size={17} color={t.dim} />
-          </Pressable>
+
+          {/* the last seven days, so today reads in context */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 40 }}>
+            {week.map((d) => {
+              const isToday = d.date === todayLocal();
+              return (
+                <View key={d.date} style={{ flex: 1, alignItems: 'center', gap: 5 }}>
+                  <View
+                    style={{
+                      width: '100%',
+                      height: Math.max(d.total > 0 ? 4 : 2, (d.total / weekMax) * 26),
+                      borderRadius: 3,
+                      backgroundColor: isToday ? t.brand : t.lineStrong,
+                      opacity: d.total === 0 ? 0.35 : isToday ? 1 : 0.7,
+                    }}
+                  />
+                  <Text style={{ color: isToday ? t.brand : t.faint, fontSize: 9, fontWeight: isToday ? '800' : '600' }}>
+                    {WEEKDAYS_SHORT[fromLocalDate(d.date).getDay()][0]}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
           <Pressable
             onPress={() => { tap(); setShowDate(true); }}
             style={{
@@ -339,12 +405,13 @@ export default function ChatScreen() {
               alignItems: 'center',
               gap: 6,
               backgroundColor: pinnedIsToday ? t.sunken : t.brandSoft,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: pinnedIsToday ? t.line : 'transparent',
               paddingHorizontal: 11,
               paddingVertical: 6,
               borderRadius: radius.pill,
             }}
           >
-            
             <Text style={{ color: pinnedIsToday ? t.dim : t.brand, fontSize: 12.5, fontWeight: '700' }}>
               Adding to · {dayLabel(pinnedDate)}
             </Text>
@@ -353,7 +420,7 @@ export default function ChatScreen() {
         </View>
       </View>
     ),
-    [t, todayTotal, pinnedDate, pinnedIsToday, refresh, setPinnedDate]
+    [t, todayTotal, week, weekMax, vsUsual, pinnedDate, pinnedIsToday, messages.length, refresh, setPinnedDate]
   );
 
   return (
@@ -376,31 +443,6 @@ export default function ChatScreen() {
                 title="What did you spend?"
                 body="Write it the way you would say it. The amount and what it was for is enough — add a day only if it was not today."
               />
-              <View style={{ gap: 8, marginTop: 4 }}>
-                {HINTS.map((h) => (
-                  <Pressable
-                    key={h.text}
-                    onPress={() => { tap(); setInput(h.text); inputRef.current?.focus(); }}
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 10,
-                      alignSelf: 'center',
-                      maxWidth: '100%',
-                      backgroundColor: t.surface,
-                      borderWidth: StyleSheet.hairlineWidth,
-                      borderColor: t.line,
-                      paddingHorizontal: 14,
-                      paddingVertical: 10,
-                      borderRadius: radius.md,
-                      opacity: pressed ? 0.7 : 1,
-                    })}
-                  >
-                    <Text style={{ color: t.ink, fontSize: 13.5, fontWeight: '600' }}>{h.text}</Text>
-                    <Text style={{ color: t.faint, fontSize: 11 }}>{h.note}</Text>
-                  </Pressable>
-                ))}
-              </View>
             </View>
           }
         />

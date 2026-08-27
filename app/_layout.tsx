@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -96,8 +96,26 @@ function Shell() {
     SystemUI.setBackgroundColorAsync(t.bg).catch(() => {});
   }, [t.bg]);
 
+  /**
+   * Without this the navigator runs on react-navigation's DefaultTheme, whose
+   * background is white - so every tab change flashed white through the gap
+   * between screens.
+   */
+  const navTheme = {
+    ...(t.dark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(t.dark ? DarkTheme : DefaultTheme).colors,
+      primary: t.brand,
+      background: t.bg,
+      card: t.surface,
+      text: t.ink,
+      border: t.line,
+      notification: t.down,
+    },
+  };
+
   return (
-    <>
+    <ThemeProvider value={navTheme}>
       <StatusBar style={t.dark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
@@ -116,6 +134,6 @@ function Shell() {
         <Stack.Screen name="manage/accounts" options={{ title: 'Accounts' }} />
         <Stack.Screen name="manage/learned" options={{ title: 'Learned words' }} />
       </Stack>
-    </>
+    </ThemeProvider>
   );
 }
