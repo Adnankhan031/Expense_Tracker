@@ -1,0 +1,274 @@
+import React, { useCallback, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { router, useFocusEffect } from 'expo-router';
+
+import { Bars, Donut, HBar, Ring } from '../../src/charts';
+import { MonthStats, buildInsights, monthStats } from '../../src/analytics';
+import { TxnWithCategory, searchTxns } from '../../src/db';
+import { useData, useSettings } from '../../src/store';
+import { radius, space, useTheme } from '../../src/theme';
+import { Card, EmptyState, IconBadge, Money, Screen, SectionTitle, tap } from '../../src/ui';
+import { MonthPickerSheet } from '../../src/pickers';
+import { currentMonth, formatMoney, monthLabel, shiftMonth, shortDayLabel } from '../../src/format';
+import { TxnEditor } from '../../src/TxnEditor';
+
+export default function DashboardScreen() {
+  const t = useTheme();
+  const { currency, numberStyle } = useSettings();
+  const { version, reload } = useData();
+  const [ym, setYm] = useState(currentMonth());
+  const [stats, setStats] = useState<MonthStats | null>(null);
+  const [recent, setRecent] = useState<TxnWithCategory[]>([]);
+  const [showMonth, setShowMonth] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const fmt = useCallback(
+    (m: number) => formatMoney(m, { symbol: currency, style: numberStyle }),
+    [currency, numberStyle]
+  );
+
+  const load = useCallback(() => {
+    const s = monthStats(ym);
+    setStats(s);
+    setRecent(searchTxns({ from: s.from, to: s.to, limit: 6 }));
+  }, [ym]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load, version])
+  );
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  if (!stats) return <Screen />;
+
+  const insights = buildInsights(stats, fmt);
+  const slices = stats.byCategory.slice(0, 8).map((c) => ({ value: c.total, color: c.color, label: c.name }));
+  const budgetPct = stats.budgetTotal > 0 ? stats.budgetUsed / stats.budgetTotal : 0;
+  const isCurrent = ym === currentMonth();
+
+  return (
+    <Screen>
+      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        {/* month switcher */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.lg }}>
+          <Pressable onPress={() => { tap(); setYm(shiftMonth(ym, -1)); }} hitSlop={14}>
+            <Ionicons name="chevron-back" size={24} color={t.textDim} />
+          </Pressable>
+          <Pressable onPress={() => { tap(); setShowMonth(true); }} style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={{ color: t.text, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 }}>{monthLabel(ym)}</Text>
+            <Text style={{ color: t.textFaint, fontSize: 11, marginTop: 1 }}>
+              {stats.count} {stats.count === 1 ? 'entry' : 'entries'}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => { tap(); if (ym < currentMonth()) setYm(shiftMonth(ym, 1)); }}
+            hitSlop={14}
+            style={{ opacity: ym < currentMonth() ? 1 : 0.25 }}
+          >
+            <Ionicons name="chevron-forward" size={24} color={t.textDim} />
+          </Pressable>
+        </View>
+
+        {stats.count === 0 ? (
+          <Card>
+            <EmptyState
+              icon="🗓"
+              title={`Nothing logged in ${monthLabel(ym, true)}`}
+              body={
+                isCurrent
+                  ? 'Head to the Add tab and type your first expense.'
+                  : 'You can backfill this month from Settings › Add past months.'
+              }
+            />
+            {!isCurrent && (
+              <Pressable
+                onPress={() => { tap(); router.push('/backfill'); }}
+                style={{ alignSelf: 'center', backgroundColor: t.accentSoft, paddingHorizontal: 16, paddingVertical: 9, borderRadius: radius.pill }}
+              >
+                <Text style={{ color: t.accent, fontWeight: '700' }}>Add past months</Text>
+              </Pressable>
+            )}
+          </Card>
+        ) : (
+          <>
+            {/* hero */}
+            <Card>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: t.textDim, fontSize: 12.5, fontWeight: '600' }}>Total spent</Text>
+                  <Money minor={stats.expense} size={38} style={{ marginTop: 2 }} />
+                  {stats.deltaPct !== null && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                      <Ionicons
+                        name={stats.deltaPct > 0 ? 'trending-up' : 'trending-down'}
+                        size={14}
+                        color={stats.deltaPct > 0 ? t.danger : t.accent}
+                      />
+                      <Text style={{ color: stats.deltaPct > 0 ? t.danger : t.accent, fontSize: 12.5, fontWeight: '700' }}>
+                        {Math.abs(Math.round(stats.deltaPct))}% vs {monthLabel(shiftMonth(ym, -1), true)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {stats.budgetTotal > 0 && (
+                  <Ring progress={budgetPct} size={82} thickness={8}>
+                    <Text style={{ color: t.text, fontWeight: '800', fontSize: 15 }}>{Math.round(budgetPct * 100)}%</Text>
+                    <Text style={{ color: t.textFaint, fontSize: 9.5 }}>of budget</Text>
+                  </Ring>
+                )}
+              </View>
+
+              <View style={{ flexDirection: 'row', marginTop: space.lg, gap: space.md }}>
+                <Stat label="Income" value={<Money minor={stats.income} size={16} color={t.income} />} />
+                <Stat
+                  label="Net"
+                  value={<Money minor={stats.net} size={16} color={stats.net >= 0 ? t.income : t.danger} prefix={stats.net >= 0 ? '+' : ''} />}
+                />
+                <Stat label="Per day" value={<Money minor={Math.round(stats.avgPerDay)} size={16} />} />
+                {isCurrent && <Stat label="Projected" value={<Money minor={stats.projected} size={16} compact />} />}
+              </View>
+            </Card>
+
+            {/* daily bars */}
+            <SectionTitle>Day by day</SectionTitle>
+            <Card>
+              <Bars data={stats.daily} height={104} labelEvery={5} />
+            </Card>
+
+            {/* donut */}
+            <SectionTitle right={<Pressable onPress={() => { tap(); router.push('/analytics'); }}><Text style={{ color: t.accent, fontSize: 12, fontWeight: '700' }}>More</Text></Pressable>}>
+              Where it went
+            </SectionTitle>
+            <Card>
+              <View style={{ alignItems: 'center', marginBottom: space.lg }}>
+                <Donut data={slices} size={168} thickness={20}>
+                  <Money minor={stats.expense} size={20} compact />
+                  <Text style={{ color: t.textFaint, fontSize: 10.5, marginTop: 1 }}>
+                    {stats.byCategory.length} categories
+                  </Text>
+                </Donut>
+              </View>
+              <View style={{ gap: 13 }}>
+                {stats.byCategory.slice(0, 8).map((c) => (
+                  <Pressable
+                    key={c.category_id}
+                    onPress={() => { tap(); router.push({ pathname: '/category/[id]', params: { id: c.category_id, ym } }); }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 5 }}>
+                      <Text style={{ fontSize: 13 }}>{c.icon}</Text>
+                      <Text style={{ color: t.text, fontSize: 13.5, fontWeight: '600', flex: 1 }}>{c.name}</Text>
+                      <Text style={{ color: t.textFaint, fontSize: 11, fontWeight: '600' }}>
+                        {Math.round((c.total / stats.expense) * 100)}%
+                      </Text>
+                      <Money minor={c.total} size={13.5} weight="700" />
+                    </View>
+                    <HBar fraction={c.total / (stats.byCategory[0]?.total || 1)} color={c.color} />
+                  </Pressable>
+                ))}
+              </View>
+            </Card>
+
+            {/* insights */}
+            {insights.length > 0 && (
+              <>
+                <SectionTitle>What stands out</SectionTitle>
+                <View style={{ gap: 8 }}>
+                  {insights.map((ins, i) => (
+                    <View
+                      key={i}
+                      style={{
+                        flexDirection: 'row',
+                        gap: 10,
+                        backgroundColor: t.card,
+                        borderRadius: radius.md,
+                        padding: 13,
+                        borderLeftWidth: 3,
+                        borderLeftColor:
+                          ins.tone === 'bad' ? t.danger : ins.tone === 'warn' ? t.warn : ins.tone === 'good' ? t.accent : t.lineStrong,
+                      }}
+                    >
+                      <Text style={{ fontSize: 15 }}>{ins.icon}</Text>
+                      <Text style={{ color: t.textDim, fontSize: 13.5, lineHeight: 19, flex: 1 }}>{ins.text}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* recent */}
+            <SectionTitle right={<Pressable onPress={() => { tap(); router.push('/history'); }}><Text style={{ color: t.accent, fontSize: 12, fontWeight: '700' }}>See all</Text></Pressable>}>
+              Recent
+            </SectionTitle>
+            <Card>
+              {recent.map((x, i) => (
+                <Pressable
+                  key={x.id}
+                  onPress={() => { tap(); setEditingId(x.id); }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: space.md,
+                    paddingVertical: 10,
+                    borderTopWidth: i === 0 ? 0 : 1,
+                    borderTopColor: t.line,
+                  }}
+                >
+                  <IconBadge icon={x.cat_icon} color={x.cat_color} size={34} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: t.text, fontSize: 14.5, fontWeight: '600' }}>{x.note || x.cat_name}</Text>
+                    <Text style={{ color: t.textFaint, fontSize: 11.5, marginTop: 1 }}>
+                      {shortDayLabel(x.local_date)}
+                      {x.method ? ` · ${x.method}` : ''}
+                    </Text>
+                  </View>
+                  <Money
+                    minor={x.amount_minor}
+                    size={15}
+                    color={x.type === 'income' ? t.income : t.text}
+                    prefix={x.type === 'income' ? '+' : ''}
+                  />
+                </Pressable>
+              ))}
+            </Card>
+          </>
+        )}
+      </ScrollView>
+
+      <MonthPickerSheet
+        visible={showMonth}
+        value={ym}
+        onClose={() => setShowMonth(false)}
+        onPick={(m) => {
+          setYm(m);
+          setShowMonth(false);
+        }}
+      />
+      <TxnEditor
+        visible={!!editingId}
+        txnId={editingId}
+        onClose={() => setEditingId(null)}
+        onSaved={() => {
+          reload();
+          load();
+        }}
+      />
+    </Screen>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+  const t = useTheme();
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={{ color: t.textFaint, fontSize: 10.5, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+        {label}
+      </Text>
+      <View style={{ marginTop: 3 }}>{value}</View>
+    </View>
+  );
+}

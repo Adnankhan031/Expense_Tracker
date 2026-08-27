@@ -1,0 +1,81 @@
+{
+  "expo": {
+    "name": "Spendly",
+    "slug": "expense-tracker",
+    "owner": "adnankhan19",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "spendly",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "backgroundColor": "#0B0F14",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0F14"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.adnankhan19.spendly",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIViewControllerBasedStatusBarAppearance": true
+      }
+    },
+    "android": {
+      "package": "com.adnankhan19.spendly",
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0F14",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-sharing",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#0B0F14",
+          "dark": { "backgroundColor": "#0B0F14" }
+        }
+      ],
+      [
+        "expo-updates",
+        {
+          "username": "adnankhan19"
+        }
+      ]
+    ],
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/3a903ea5-8265-4ca9-bcee-c8af48d4990f",
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3a903ea5-8265-4ca9-bcee-c8af48d4990f"
+      }
+    }
+  }
+}
