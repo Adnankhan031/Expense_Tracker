@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Updates from 'expo-updates';
 import * as SystemUI from 'expo-system-ui';
 
 import { initDb } from '../src/db';
@@ -58,8 +59,38 @@ export default function RootLayout() {
   );
 }
 
+/**
+ * Apply over-the-air updates on launch instead of one launch late.
+ *
+ * fallbackToCacheTimeout is 0, so the runtime shows the cached bundle
+ * immediately and fetches the new one in the background - which means a fresh
+ * update only appears the *next* time the app is opened. Checking here and
+ * reloading as soon as the download finishes makes it land on this launch.
+ */
+function useAutoUpdate() {
+  useEffect(() => {
+    if (__DEV__) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const check = await Updates.checkForUpdateAsync();
+        if (cancelled || !check.isAvailable) return;
+        const fetched = await Updates.fetchUpdateAsync();
+        if (cancelled || !fetched.isNew) return;
+        await Updates.reloadAsync();
+      } catch {
+        // offline, or updates disabled in this build - keep running the current bundle
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+}
+
 function Shell() {
   const t = useTheme();
+  useAutoUpdate();
 
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(t.bg).catch(() => {});
