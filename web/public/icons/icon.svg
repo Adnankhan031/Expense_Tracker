@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0B0F14"/>
+  <path d="M126 168a44 44 0 0 1 44-44h172a44 44 0 0 1 44 44v116a44 44 0 0 1-44 44H236l-70 60v-60h4a44 44 0 0 1-44-44z" fill="#3DDC97"/>
+  <path d="M232 288v-16m48 16v-16m-48-96v16m48-16v16" stroke="#05130D" stroke-width="0"/>
+  <text x="256" y="253" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="132" font-weight="800" fill="#05130D" text-anchor="middle">₹</text>
+</svg>

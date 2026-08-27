@@ -1,0 +1,131 @@
+@import 'tailwindcss';
+
+/* Same visual language as the native app: dark-first, one mint accent, big
+   tabular numerals. Light mode is a full second palette, not an inversion. */
+
+@theme {
+  --color-bg: #0b0f14;
+  --color-elev: #111721;
+  --color-card: #151d28;
+  --color-card-alt: #1b2634;
+  --color-line: #232e3d;
+  --color-line-strong: #31404f;
+  --color-ink: #edf3f9;
+  --color-dim: #93a2b4;
+  --color-faint: #5e6e80;
+  --color-accent: #3ddc97;
+  --color-accent-soft: #12352a;
+  --color-on-accent: #05130d;
+  --color-danger: #ff7a7a;
+  --color-danger-soft: #3a1c1f;
+  --color-warn: #ffb454;
+  --color-info: #63a9ff;
+
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+}
+
+:root[data-theme='light'] {
+  --color-bg: #f4f7f9;
+  --color-elev: #ffffff;
+  --color-card: #ffffff;
+  --color-card-alt: #edf1f5;
+  --color-line: #dfe6ed;
+  --color-line-strong: #c6d2dd;
+  --color-ink: #0d1620;
+  --color-dim: #586878;
+  --color-faint: #8b9aa9;
+  --color-accent: #0fa968;
+  --color-accent-soft: #d9f5e8;
+  --color-on-accent: #ffffff;
+  --color-danger: #d64545;
+  --color-danger-soft: #fbe4e4;
+  --color-warn: #b27200;
+  --color-info: #2c74d6;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  overscroll-behavior-y: none;
+}
+
+body {
+  margin: 0;
+  /* room for the fixed tab bar plus the iPhone home indicator */
+  min-height: 100dvh;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.safe-b {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-t {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+input,
+textarea,
+button,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* iOS zooms the page when a focused input is under 16px */
+input,
+textarea {
+  font-size: 16px;
+}
+
+::placeholder {
+  color: var(--color-faint);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 0.32s cubic-bezier(0.2, 0.8, 0.25, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: spin 0.7s linear infinite;
+}
