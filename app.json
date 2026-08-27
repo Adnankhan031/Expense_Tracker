@@ -8,13 +8,7 @@
     "icon": "./assets/icon.png",
     "scheme": "spendly",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "backgroundColor": "#0B0F14",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0B0F14"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.adnankhan19.spendly",
@@ -27,7 +21,6 @@
     "android": {
       "package": "com.adnankhan19.spendly",
       "versionCode": 1,
-      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "backgroundColor": "#0B0F14",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -55,12 +48,7 @@
           "dark": { "backgroundColor": "#0B0F14" }
         }
       ],
-      [
-        "expo-updates",
-        {
-          "username": "adnankhan19"
-        }
-      ]
+      "expo-updates"
     ],
     "updates": {
       "enabled": true,
