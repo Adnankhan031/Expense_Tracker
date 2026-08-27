@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { Bars, Donut, GroupedBars, HBar, TrendLine } from '../../src/charts';
@@ -7,8 +7,10 @@ import { RangeStats, rangeStats } from '../../src/analytics';
 import { firstTxnDate } from '../../src/db';
 import { useData, useSettings } from '../../src/store';
 import { radius, space, useTheme } from '../../src/theme';
-import { Card, EmptyState, Money, Screen, SectionTitle, Segmented, tap } from '../../src/ui';
+import { Card, Chip, EmptyState, Money, Screen, SectionTitle, Segmented, tap } from '../../src/ui';
+import { DatePickerSheet } from '../../src/pickers';
 import {
+  addDays,
   currentMonth,
   dayLabel,
   monthEnd,
@@ -19,7 +21,7 @@ import {
 } from '../../src/format';
 import { CategoryIcon } from '../../src/icons';
 
-type Period = 'month' | '3m' | '6m' | '12m' | 'all';
+type Period = 'month' | '3m' | '6m' | '12m' | 'all' | 'custom';
 
 const OPTIONS: { value: Period; label: string }[] = [
   { value: 'month', label: 'Month' },
@@ -27,12 +29,17 @@ const OPTIONS: { value: Period; label: string }[] = [
   { value: '6m', label: '6M' },
   { value: '12m', label: '1Y' },
   { value: 'all', label: 'All' },
+  { value: 'custom', label: 'Range' },
 ];
 
 export default function AnalyticsScreen() {
   const t = useTheme();
   const dataVersion = useData((s) => s.version);
   const [period, setPeriod] = useState<Period>('6m');
+  // custom window, defaulting to the last 30 days so the pickers open somewhere useful
+  const [from, setFrom] = useState(() => addDays(todayLocal(), -29));
+  const [to, setTo] = useState(() => todayLocal());
+  const [picking, setPicking] = useState<'from' | 'to' | null>(null);
   const [stats, setStats] = useState<RangeStats | null>(null);
   const [prev, setPrev] = useState<RangeStats | null>(null);
 
@@ -44,13 +51,18 @@ export default function AnalyticsScreen() {
       const first = firstTxnDate() ?? monthStart(cur);
       return { from: first, to: today, label: 'All time' };
     }
+    if (period === 'custom') {
+      const lo = from <= to ? from : to;
+      const hi = from <= to ? to : from;
+      return { from: lo, to: hi, label: `${dayLabel(lo)} – ${dayLabel(hi)}` };
+    }
     const back = period === '3m' ? 2 : period === '6m' ? 5 : 11;
     return { from: monthStart(shiftMonth(cur, -back)), to: monthEnd(cur), label: `Last ${back + 1} months` };
-  }, [period]);
+  }, [period, from, to]);
 
   const load = useCallback(() => {
     setStats(rangeStats(bounds.from, bounds.to, bounds.label));
-    if (period !== 'all') {
+    if (period !== 'all' && period !== 'custom') {
       const cur = currentMonth();
       const back = period === 'month' ? 1 : period === '3m' ? 3 : period === '6m' ? 6 : 12;
       const prevFrom = monthStart(shiftMonth(cur, -(back * 2 - 1)));
@@ -92,6 +104,63 @@ export default function AnalyticsScreen() {
         <Text style={{ color: t.dim, fontSize: 13, marginBottom: space.lg }}>{stats.label}</Text>
 
         <Segmented options={OPTIONS} value={period} onChange={setPeriod} />
+
+        {period === 'custom' && (
+          <Card style={{ marginTop: space.md }}>
+            <Text
+              style={{
+                color: t.faint,
+                fontSize: 11,
+                fontWeight: '700',
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+                marginBottom: 10,
+              }}
+            >
+              Pick a window
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {(['from', 'to'] as const).map((which) => (
+                <Pressable
+                  key={which}
+                  onPress={() => { tap(); setPicking(which); }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: t.sunken,
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: t.line,
+                    borderRadius: radius.md,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                  }}
+                >
+                  <Text style={{ color: t.dim, fontSize: 10.5, fontWeight: '700', textTransform: 'capitalize' }}>
+                    {which}
+                  </Text>
+                  <Text style={{ color: t.ink, fontSize: 14, fontWeight: '700', marginTop: 2 }}>
+                    {dayLabel(which === 'from' ? from : to)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+              {([['7 days', 6], ['30 days', 29], ['90 days', 89], ['1 year', 364]] as const).map(([label, back]) => (
+                <Chip
+                  key={label}
+                  label={label}
+                  small
+                  onPress={() => {
+                    setFrom(addDays(todayLocal(), -back));
+                    setTo(todayLocal());
+                  }}
+                />
+              ))}
+            </View>
+            <Text style={{ color: t.faint, fontSize: 11, marginTop: 8 }}>
+              {stats.days} day{stats.days === 1 ? '' : 's'} selected
+            </Text>
+          </Card>
+        )}
 
         {stats.count === 0 ? (
           <Card style={{ marginTop: space.lg }}>
@@ -303,6 +372,18 @@ export default function AnalyticsScreen() {
           </>
         )}
       </ScrollView>
+
+      <DatePickerSheet
+        visible={picking !== null}
+        value={picking === 'to' ? to : from}
+        title={picking === 'to' ? 'Range end' : 'Range start'}
+        onClose={() => setPicking(null)}
+        onPick={(d) => {
+          if (picking === 'to') setTo(d);
+          else setFrom(d);
+          setPicking(null);
+        }}
+      />
     </Screen>
   );
 }

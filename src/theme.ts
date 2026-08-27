@@ -2,8 +2,12 @@ import { useColorScheme } from 'react-native';
 import { useSettings } from './store';
 
 /**
- * Matches web/src/app/globals.css. Warm near-black ground with a gold primary,
- * and separate semantic hues so a number's direction reads before the number does.
+ * Matches web/src/app/globals.css.
+ *
+ * The accent is indigo, deliberately a long way from both semantic hues: teal
+ * means money in, rose means money out, so the brand colour must never be
+ * mistaken for either. Light mode is a cool neutral scale — a warm grey made
+ * every button and chip look muddy.
  */
 export type Theme = {
   dark: boolean;
@@ -30,48 +34,48 @@ export type Theme = {
 
 const dark: Theme = {
   dark: true,
-  bg: '#0A0B0F',
-  surface: '#13151C',
-  raised: '#1B1E27',
-  sunken: '#0E1015',
-  line: '#232733',
-  lineSoft: '#1A1E28',
-  lineStrong: '#333949',
-  ink: '#F2F4F8',
-  dim: '#969DB0',
-  faint: '#626A7D',
-  brand: '#FFB020',
-  brandSoft: '#2E2208',
-  onBrand: '#1A1200',
+  bg: '#0A0B10',
+  surface: '#14161F',
+  raised: '#1B1E29',
+  sunken: '#0F111A',
+  line: '#242838',
+  lineSoft: '#1A1D29',
+  lineStrong: '#343A4E',
+  ink: '#F1F3F9',
+  dim: '#98A0B4',
+  faint: '#646C82',
+  brand: '#7B7BF5',
+  brandSoft: '#1C1C3A',
+  onBrand: '#FFFFFF',
   up: '#2DD4A7',
   upSoft: '#0D2E26',
   down: '#FF5C7C',
   downSoft: '#331420',
   info: '#5B8DEF',
-  warn: '#FFB020',
+  warn: '#F5A524',
 };
 
 const light: Theme = {
   dark: false,
-  bg: '#F6F6F3',
+  bg: '#F7F8FB',
   surface: '#FFFFFF',
   raised: '#FFFFFF',
-  sunken: '#EEEEEA',
-  line: '#E3E3DD',
-  lineSoft: '#EDEDEA',
-  lineStrong: '#CDCDC5',
-  ink: '#14161C',
-  dim: '#5B626E',
-  faint: '#8C93A0',
-  brand: '#A86C00',
-  brandSoft: '#FDF0D6',
+  sunken: '#F0F2F7',
+  line: '#E3E7F0',
+  lineSoft: '#EDEFF5',
+  lineStrong: '#C7CEDD',
+  ink: '#111420',
+  dim: '#576074',
+  faint: '#8892A6',
+  brand: '#4F46D6',
+  brandSoft: '#EAE9FD',
   onBrand: '#FFFFFF',
   up: '#0B9B78',
   upSoft: '#D8F5EC',
   down: '#D43A5F',
   downSoft: '#FCE3E8',
   info: '#3567CF',
-  warn: '#A86C00',
+  warn: '#B4740B',
 };
 
 export function useTheme(): Theme {

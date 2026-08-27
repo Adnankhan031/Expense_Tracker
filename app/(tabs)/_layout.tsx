@@ -10,6 +10,9 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarHideOnKeyboard: true,
+        // cross-fade the screens instead of cutting between them
+        animation: 'shift',
         tabBarActiveTintColor: t.brand,
         tabBarInactiveTintColor: t.faint,
         tabBarStyle: {

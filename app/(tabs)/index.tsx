@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
-  KeyboardAvoidingView,
+  ScrollView,
   Platform,
   Pressable,
   StyleSheet,
@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { ArrowUp, LayoutGrid, MessageSquareText, Plus, Trash2, X } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
 
 import {
@@ -33,9 +33,15 @@ import { Chip, EmptyState, Money, Screen, tap, tapSuccess } from '../../src/ui';
 import { DatePickerSheet } from '../../src/pickers';
 import { TxnEditor } from '../../src/TxnEditor';
 import { dayLabel, formatMoney, shortDayLabel, todayLocal } from '../../src/format';
-import { IconTile } from '../../src/icons';
+import { CategoryIcon, IconTile } from '../../src/icons';
+import { useKeyboardHeight } from '../../src/useKeyboard';
 
-const HINTS = ['food 300', 'groceries 2400 and auto 80', 'petrol 1500 on 5th', 'salary 45000 received'];
+const HINTS = [
+  { text: 'lunch 1200', note: 'the basics' },
+  { text: 'groceries 4800 and train 320', note: 'two at once' },
+  { text: 'rent 85000 on 1', note: 'a past date' },
+  { text: 'salary 300000 received', note: 'income' },
+];
 
 export default function ChatScreen() {
   const t = useTheme();
@@ -50,6 +56,17 @@ export default function ChatScreen() {
   const [creating, setCreating] = useState(false);
   const [todayTotal, setTodayTotal] = useState(0);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const inputRef = useRef<TextInput>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const kb = useKeyboardHeight();
+
+  /** Drop the category's own keyword in, so all that is left to type is the amount. */
+  const pickCategory = (c: (typeof categories)[number]) => {
+    tap();
+    const word = (c.keywords.split('|')[0] || c.name.split(' ')[0]).toLowerCase();
+    setInput((prev) => (prev.trim() ? `${prev.trim()} ` : '') + `${word} `);
+    inputRef.current?.focus();
+  };
 
   const fmt = useCallback(
     (m: number) => formatMoney(m, { symbol: currency.symbol, style: currency.grouping, digits: currency.digits }),
@@ -191,7 +208,7 @@ export default function ChatScreen() {
                 prefix={tx.type === 'income' ? '+' : ''}
               />
               <Pressable onPress={() => removeTxn(item)} hitSlop={10} style={{ paddingLeft: 4 }}>
-                <Ionicons name="close" size={16} color={t.faint} />
+                <X size={15} color={t.faint} />
               </Pressable>
             </View>
             <View style={{ flexDirection: 'row', gap: 5, marginTop: 9, flexWrap: 'wrap' }}>
@@ -301,7 +318,7 @@ export default function ChatScreen() {
             onPress={() => { tap(); setCreating(true); }}
             style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: t.sunken, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Ionicons name="add" size={22} color={t.ink} />
+            <Plus size={20} color={t.dim} />
           </Pressable>
           <Pressable
             onPress={() => {
@@ -311,7 +328,7 @@ export default function ChatScreen() {
             }}
             style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: t.sunken, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Ionicons name="trash-outline" size={18} color={t.dim} />
+            <Trash2 size={17} color={t.dim} />
           </Pressable>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -327,7 +344,7 @@ export default function ChatScreen() {
               borderRadius: radius.pill,
             }}
           >
-            <Ionicons name="calendar-outline" size={13} color={pinnedIsToday ? t.dim : t.brand} />
+            
             <Text style={{ color: pinnedIsToday ? t.dim : t.brand, fontSize: 12.5, fontWeight: '700' }}>
               Adding to · {dayLabel(pinnedDate)}
             </Text>
@@ -342,11 +359,7 @@ export default function ChatScreen() {
   return (
     <Screen>
       {header}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
-      >
+      <View style={{ flex: 1, paddingBottom: kb }}>
         <FlatList
           ref={listRef}
           data={messages}
@@ -354,28 +367,80 @@ export default function ChatScreen() {
           renderItem={renderItem}
           contentContainerStyle={{ padding: space.lg, paddingBottom: 12, flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
           ListEmptyComponent={
             <View style={{ flex: 1, justifyContent: 'center' }}>
               <EmptyState
-                icon="💬"
-                title="Type what you spent"
-                body="No forms. Write it the way you'd say it — the amount, what it was for, and a date if it wasn't today."
+                icon={<MessageSquareText size={22} color={t.brand} />}
+                title="What did you spend?"
+                body="Write it the way you would say it. The amount and what it was for is enough — add a day only if it was not today."
               />
-              <View style={{ gap: 8, alignItems: 'center' }}>
+              <View style={{ gap: 8, marginTop: 4 }}>
                 {HINTS.map((h) => (
                   <Pressable
-                    key={h}
-                    onPress={() => { tap(); setInput(h); }}
-                    style={{ backgroundColor: t.sunken, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill }}
+                    key={h.text}
+                    onPress={() => { tap(); setInput(h.text); inputRef.current?.focus(); }}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      alignSelf: 'center',
+                      maxWidth: '100%',
+                      backgroundColor: t.surface,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: t.line,
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: radius.md,
+                      opacity: pressed ? 0.7 : 1,
+                    })}
                   >
-                    <Text style={{ color: t.dim, fontSize: 13 }}>{h}</Text>
+                    <Text style={{ color: t.ink, fontSize: 13.5, fontWeight: '600' }}>{h.text}</Text>
+                    <Text style={{ color: t.faint, fontSize: 11 }}>{h.note}</Text>
                   </Pressable>
                 ))}
               </View>
             </View>
           }
         />
+
+        {/* tap a category, then just type the amount */}
+        {showPicker && (
+          <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.line, backgroundColor: t.surface }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingHorizontal: space.md, paddingVertical: 10, gap: 8 }}
+            >
+              {categories
+                .filter((c) => c.kind === 'expense')
+                .map((c) => (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => pickCategory(c)}
+                    style={({ pressed }) => ({
+                      alignItems: 'center',
+                      gap: 5,
+                      width: 66,
+                      paddingVertical: 8,
+                      borderRadius: radius.md,
+                      backgroundColor: t.sunken,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: t.line,
+                      opacity: pressed ? 0.65 : 1,
+                    })}
+                  >
+                    <CategoryIcon name={c.icon} size={19} color={c.color} />
+                    <Text numberOfLines={1} style={{ color: t.dim, fontSize: 9.5, fontWeight: '600', maxWidth: 58 }}>
+                      {c.name}
+                    </Text>
+                  </Pressable>
+                ))}
+            </ScrollView>
+          </View>
+        )}
 
         <View
           style={{
@@ -384,16 +449,31 @@ export default function ChatScreen() {
             gap: 8,
             paddingHorizontal: space.md,
             paddingTop: 8,
-            paddingBottom: 10,
+            paddingBottom: kb > 0 ? 10 : 12,
             borderTopWidth: StyleSheet.hairlineWidth,
             borderTopColor: t.line,
             backgroundColor: t.raised,
           }}
         >
+          <Pressable
+            onPress={() => { tap(); setShowPicker((v) => !v); }}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: radius.md,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: showPicker ? t.brandSoft : t.sunken,
+            }}
+          >
+            <LayoutGrid size={18} color={showPicker ? t.brand : t.dim} />
+          </Pressable>
+
           <TextInput
+            ref={inputRef}
             value={input}
             onChangeText={setInput}
-            placeholder={pinnedIsToday ? 'food 300' : `Adding to ${dayLabel(pinnedDate)}…`}
+            placeholder={pinnedIsToday ? 'lunch 1200' : `Adding to ${dayLabel(pinnedDate)}…`}
             placeholderTextColor={t.faint}
             onSubmitEditing={send}
             returnKeyType="send"
@@ -401,9 +481,12 @@ export default function ChatScreen() {
             multiline
             style={{
               flex: 1,
+              minHeight: 42,
               maxHeight: 110,
               backgroundColor: t.sunken,
-              borderRadius: 20,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: t.line,
+              borderRadius: 21,
               paddingHorizontal: 16,
               paddingTop: 11,
               paddingBottom: 11,
@@ -423,10 +506,10 @@ export default function ChatScreen() {
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="arrow-up" size={20} color={input.trim() ? t.onBrand : t.faint} />
+            <ArrowUp size={19} color={input.trim() ? t.onBrand : t.faint} />
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <DatePickerSheet
         visible={showDate}
