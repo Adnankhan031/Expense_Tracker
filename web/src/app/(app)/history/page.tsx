@@ -4,7 +4,9 @@ import React, { useMemo, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { dailyTotals } from '@/lib/analytics';
 import { HeatGrid } from '@/components/charts';
-import { Card, Chip, EmptyState, IconBadge, Spinner, cx, inputClass } from '@/components/ui';
+import { ChevronLeft, ChevronRight, Search, SearchX } from 'lucide-react';
+import { Card, Chip, EmptyState, Spinner, cx, inputClass } from '@/components/ui';
+import { IconTile } from '@/lib/icons';
 import { CategoryPicker, MonthPicker } from '@/components/pickers';
 import { TxnEditor } from '@/components/TxnEditor';
 import {
@@ -101,9 +103,9 @@ export default function HistoryPage() {
             setYm(shiftMonth(ym, -1));
             setDay(null);
           }}
-          className="px-3 text-2xl text-dim"
+          className="grid size-9 place-items-center rounded-lg bg-sunken text-dim active:scale-90"
         >
-          ‹
+          <ChevronLeft size={18} />
         </button>
         <button type="button" onClick={() => setShowMonth(true)} className="flex-1 text-center">
           <span className="block text-xl font-extrabold tracking-tight">{monthLabel(ym)}</span>
@@ -117,9 +119,9 @@ export default function HistoryPage() {
               setDay(null);
             }
           }}
-          className={cx('px-3 text-2xl text-dim', ym >= currentMonth() && 'opacity-25')}
+          className={cx('grid size-9 place-items-center rounded-lg bg-sunken text-dim active:scale-90', ym >= currentMonth() && 'opacity-25')}
         >
-          ›
+          <ChevronRight size={18} />
         </button>
       </div>
 
@@ -136,15 +138,17 @@ export default function HistoryPage() {
       </Card>
 
       <div className="mt-3 flex items-center gap-2">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search notes"
-          className={cx(inputClass, 'flex-1 py-2.5')}
-        />
+        <div className="relative flex-1">
+          <Search size={15} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-faint" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search notes"
+            className={cx(inputClass, 'py-2.5 pl-10')}
+          />
+        </div>
         <Chip
           label={selectedCategory ? selectedCategory.name : 'All'}
-          icon={selectedCategory?.icon}
           active={!!selectedCategory}
           color={selectedCategory?.color}
           onClick={() => setShowCat(true)}
@@ -160,7 +164,7 @@ export default function HistoryPage() {
       <div className="mt-2">
         {groups.length === 0 ? (
           <EmptyState
-            icon="🔍"
+            icon={SearchX}
             title="Nothing here"
             body={
               q || categoryId || day
@@ -181,9 +185,9 @@ export default function HistoryPage() {
                     key={item.id}
                     type="button"
                     onClick={() => setEditing(item)}
-                    className="flex items-center gap-3 rounded-xl bg-card p-3 text-left active:opacity-75"
+                    className="flex items-center gap-3 rounded-xl bg-surface p-3 text-left active:opacity-75"
                   >
-                    <IconBadge icon={item.cat_icon} color={item.cat_color} size={36} />
+                    <IconTile name={item.cat_icon} color={item.cat_color} size={36} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[14.5px] font-semibold">{item.note || item.cat_name}</span>
                       <span className="block truncate text-[11.5px] text-faint">
@@ -193,7 +197,7 @@ export default function HistoryPage() {
                       </span>
                     </span>
                     <span
-                      className={cx('tabular text-[15px] font-bold', item.type === 'income' && 'text-accent')}
+                      className={cx('tabular text-[15px] font-bold', item.type === 'income' && 'text-up')}
                     >
                       {item.type === 'income' ? '+' : ''}
                       {fmt(item.amount_minor)}

@@ -1,29 +1,37 @@
+import type { Grouping } from './currency';
+
 /** Money is stored as integer minor units. Never floats. */
 
 export const toMinor = (major: number) => Math.round(major * 100);
 export const toMajor = (minor: number) => minor / 100;
 
-const grouped = (n: number, style: 'indian' | 'international') => {
-  const [int, dec] = n.toFixed(2).split('.');
-  const neg = int.startsWith('-');
-  const digits = neg ? int.slice(1) : int;
+const grouped = (n: number, style: Grouping, digits: 0 | 2) => {
+  const [int, dec] = Math.abs(n).toFixed(digits === 0 ? 0 : 2).split('.');
+  const neg = n < 0;
   let out: string;
-  if (style === 'indian' && digits.length > 3) {
-    const last3 = digits.slice(-3);
-    const rest = digits.slice(0, -3);
+  if (style === 'indian' && int.length > 3) {
+    const last3 = int.slice(-3);
+    const rest = int.slice(0, -3);
     out = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3;
   } else {
-    out = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    out = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
-  return { text: (neg ? '-' : '') + out, dec };
+  return { text: (neg ? '-' : '') + out, dec: dec ?? '00' };
 };
 
 export function formatMoney(
   minor: number,
-  opts: { symbol?: string; style?: 'indian' | 'international'; decimals?: boolean; compact?: boolean } = {}
+  opts: {
+    symbol?: string;
+    style?: Grouping;
+    /** Decimal places to render. Zero-decimal currencies (JPY, KRW) pass 0. */
+    digits?: 0 | 2;
+    compact?: boolean;
+  } = {}
 ) {
-  const symbol = opts.symbol ?? '₹';
-  const style = opts.style ?? 'indian';
+  const symbol = opts.symbol ?? '¥';
+  const style = opts.style ?? 'international';
+  const digits = opts.digits ?? 2;
   const value = toMajor(minor);
 
   if (opts.compact) {
@@ -31,18 +39,16 @@ export function formatMoney(
     if (style === 'indian') {
       if (abs >= 1e7) return `${symbol}${(value / 1e7).toFixed(abs >= 1e8 ? 0 : 1)}Cr`;
       if (abs >= 1e5) return `${symbol}${(value / 1e5).toFixed(abs >= 1e6 ? 0 : 1)}L`;
-      if (abs >= 1e3) return `${symbol}${(value / 1e3).toFixed(abs >= 1e4 ? 0 : 1)}k`;
     } else {
       if (abs >= 1e9) return `${symbol}${(value / 1e9).toFixed(1)}B`;
-      if (abs >= 1e6) return `${symbol}${(value / 1e6).toFixed(1)}M`;
-      if (abs >= 1e3) return `${symbol}${(value / 1e3).toFixed(abs >= 1e4 ? 0 : 1)}k`;
+      if (abs >= 1e6) return `${symbol}${(value / 1e6).toFixed(abs >= 1e7 ? 0 : 1)}M`;
     }
-    return `${symbol}${Math.round(value)}`;
+    if (abs >= 1e3) return `${symbol}${(value / 1e3).toFixed(abs >= 1e4 ? 0 : 1)}k`;
+    return `${symbol}${digits === 0 ? Math.round(value) : value.toFixed(0)}`;
   }
 
-  const { text, dec } = grouped(value, style);
-  const showDec = opts.decimals ?? dec !== '00';
-  return `${symbol}${text}${showDec ? '.' + dec : ''}`;
+  const { text, dec } = grouped(value, style, digits);
+  return digits === 0 ? `${symbol}${text}` : `${symbol}${text}.${dec}`;
 }
 
 /* -------------------------- dates -------------------------- */

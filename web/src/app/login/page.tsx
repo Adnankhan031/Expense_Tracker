@@ -50,14 +50,14 @@ function LoginForm() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-7 px-6 py-12">
       <div>
-        <div className="mb-5 grid size-14 place-items-center rounded-2xl bg-accent text-2xl font-extrabold text-on-accent">
-          ₹
+        <div className="mb-5 grid size-14 place-items-center rounded-2xl bg-brand text-2xl font-extrabold text-on-brand">
+          ¥
         </div>
         <h1 className="text-3xl font-extrabold tracking-tight">
           {mode === 'signin' ? 'Welcome back' : 'Create your account'}
         </h1>
         <p className="mt-2 leading-relaxed text-dim">
-          Type what you spent — <span className="text-ink">food 300</span> — and it lands in the right category, on the
+          Type what you spent — <span className="font-semibold text-ink">lunch 1200</span> — and it lands in the right category, on the
           right day.
         </p>
       </div>
@@ -84,10 +84,10 @@ function LoginForm() {
         />
 
         {error && (
-          <p className="rounded-xl bg-danger-soft px-3.5 py-2.5 text-[13px] leading-relaxed text-danger">{error}</p>
+          <p className="rounded-xl bg-down-soft px-3.5 py-2.5 text-[13px] leading-relaxed text-down">{error}</p>
         )}
         {notice && (
-          <p className="rounded-xl bg-accent-soft px-3.5 py-2.5 text-[13px] leading-relaxed text-accent">{notice}</p>
+          <p className="rounded-xl bg-brand-soft px-3.5 py-2.5 text-[13px] leading-relaxed text-brand">{notice}</p>
         )}
 
         <Button type="submit" loading={busy}>
@@ -99,7 +99,7 @@ function LoginForm() {
         {mode === 'signin' ? "Don't have an account?" : 'Already have one?'}{' '}
         <button
           type="button"
-          className="font-semibold text-accent"
+          className="font-semibold text-brand"
           onClick={() => {
             setMode(mode === 'signin' ? 'signup' : 'signin');
             setError(null);

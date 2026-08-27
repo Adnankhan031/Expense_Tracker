@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import { buildInsights, monthStats } from '@/lib/analytics';
 import { Bars, Donut, HBar, Ring } from '@/components/charts';
-import { Card, EmptyState, IconBadge, SectionTitle, Spinner, cx } from '@/components/ui';
+import { CalendarX2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Card, EmptyState, SectionTitle, Spinner, cx } from '@/components/ui';
+import { IconTile } from '@/lib/icons';
 import { MonthPicker } from '@/components/pickers';
 import { TxnEditor } from '@/components/TxnEditor';
 import { currentMonth, monthLabel, shiftMonth, shortDayLabel } from '@/lib/format';
@@ -38,8 +40,8 @@ export default function OverviewPage() {
   return (
     <div className="px-4 pb-6">
       <div className="flex items-center py-4">
-        <button type="button" onClick={() => setYm(shiftMonth(ym, -1))} className="px-3 text-2xl text-dim">
-          ‹
+        <button type="button" onClick={() => setYm(shiftMonth(ym, -1))} className="grid size-9 place-items-center rounded-lg bg-sunken text-dim active:scale-90">
+          <ChevronLeft size={18} />
         </button>
         <button type="button" onClick={() => setShowMonth(true)} className="flex-1 text-center">
           <span className="block text-xl font-extrabold tracking-tight">{monthLabel(ym)}</span>
@@ -50,29 +52,29 @@ export default function OverviewPage() {
         <button
           type="button"
           onClick={() => ym < currentMonth() && setYm(shiftMonth(ym, 1))}
-          className={cx('px-3 text-2xl text-dim', ym >= currentMonth() && 'opacity-25')}
+          className={cx('grid size-9 place-items-center rounded-lg bg-sunken text-dim active:scale-90', ym >= currentMonth() && 'opacity-25')}
         >
-          ›
+          <ChevronRight size={18} />
         </button>
       </div>
 
       {stats.count === 0 ? (
         <Card>
           <EmptyState
-            icon="🗓"
+            icon={CalendarX2}
             title={`Nothing logged in ${monthLabel(ym, true)}`}
             body={
               isCurrent
                 ? 'Head to the Add tab and type your first expense.'
-                : 'You can fill this month in from the Backfill screen.'
+                : 'Add entries for this month by hand from the Add entries screen.'
             }
           />
           {!isCurrent && (
             <Link
-              href="/backfill"
-              className="mx-auto block w-fit rounded-full bg-accent-soft px-4 py-2 text-sm font-bold text-accent"
+              href="/manual"
+              className="mx-auto block w-fit rounded-full bg-brand-soft px-4 py-2 text-sm font-bold text-brand"
             >
-              Add past months
+              Add entries manually
             </Link>
           )}
         </Card>
@@ -87,7 +89,7 @@ export default function OverviewPage() {
                   <p
                     className={cx(
                       'mt-1.5 text-[12.5px] font-bold',
-                      stats.deltaPct > 0 ? 'text-danger' : 'text-accent'
+                      stats.deltaPct > 0 ? 'text-down' : 'text-brand'
                     )}
                   >
                     {stats.deltaPct > 0 ? '▲' : '▼'} {Math.abs(Math.round(stats.deltaPct))}% vs{' '}
@@ -118,7 +120,7 @@ export default function OverviewPage() {
 
           <SectionTitle
             right={
-              <Link href="/analytics" className="text-xs font-bold text-accent">
+              <Link href="/analytics" className="text-xs font-bold text-brand">
                 More
               </Link>
             }
@@ -156,15 +158,15 @@ export default function OverviewPage() {
                 {insights.map((ins, i) => (
                   <div
                     key={i}
-                    className="flex gap-2.5 rounded-xl bg-card p-3.5"
+                    className="flex gap-2.5 rounded-xl bg-surface p-3.5"
                     style={{
                       borderLeft: `3px solid ${
                         ins.tone === 'bad'
-                          ? 'var(--color-danger)'
+                          ? 'var(--color-down)'
                           : ins.tone === 'warn'
                             ? 'var(--color-warn)'
                             : ins.tone === 'good'
-                              ? 'var(--color-accent)'
+                              ? 'var(--color-brand)'
                               : 'var(--color-line-strong)'
                       }`,
                     }}
@@ -179,7 +181,7 @@ export default function OverviewPage() {
 
           <SectionTitle
             right={
-              <Link href="/history" className="text-xs font-bold text-accent">
+              <Link href="/history" className="text-xs font-bold text-brand">
                 See all
               </Link>
             }
@@ -197,7 +199,7 @@ export default function OverviewPage() {
                   i > 0 && 'border-t border-line'
                 )}
               >
-                <IconBadge icon={x.cat_icon} color={x.cat_color} size={34} />
+                <IconTile name={x.cat_icon} color={x.cat_color} size={34} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14.5px] font-semibold">{x.note || x.cat_name}</span>
                   <span className="block text-[11.5px] text-faint">
@@ -205,7 +207,7 @@ export default function OverviewPage() {
                     {x.method ? ` · ${x.method}` : ''}
                   </span>
                 </span>
-                <span className={cx('tabular text-[15px] font-bold', x.type === 'income' && 'text-accent')}>
+                <span className={cx('tabular text-[15px] font-bold', x.type === 'income' && 'text-brand')}>
                   {x.type === 'income' ? '+' : ''}
                   {fmt(x.amount_minor)}
                 </span>
@@ -236,8 +238,8 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: 'ac
       <p
         className={cx(
           'tabular mt-0.5 truncate text-base font-bold',
-          tone === 'accent' && 'text-accent',
-          tone === 'danger' && 'text-danger'
+          tone === 'accent' && 'text-brand',
+          tone === 'danger' && 'text-down'
         )}
       >
         {value}

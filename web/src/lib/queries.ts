@@ -2,6 +2,7 @@
 
 import { supabaseBrowser } from './supabase/client';
 import { SEED_ACCOUNTS, SEED_CATEGORIES } from './seed';
+import { ICON_MAP, resolveIconName } from './icons';
 import type { Account, Alias, Budget, Category, ChatMessage, NewTxn, Txn, TxnView } from './types';
 
 const db = () => supabaseBrowser();
@@ -333,4 +334,25 @@ export function withCategory(txns: Txn[], categories: Category[]): TxnView[] {
       cat_key: c?.key ?? 'other',
     };
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* one-time icon migration                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Categories seeded before the icon set existed store an emoji in `icon`.
+ * Rewrite those rows to icon names once, so the UI never has to render emoji.
+ */
+export async function migrateCategoryIcons(cats: Category[]): Promise<Category[]> {
+  const stale = cats.filter((c) => !ICON_MAP[c.icon]);
+  if (!stale.length) return cats;
+
+  const patched = stale.map((c) => ({ id: c.id, icon: resolveIconName(c.icon) }));
+  await Promise.all(
+    patched.map((p) => db().from('categories').update({ icon: p.icon }).eq('id', p.id))
+  );
+
+  const byId = new Map(patched.map((p) => [p.id, p.icon]));
+  return cats.map((c) => (byId.has(c.id) ? { ...c, icon: byId.get(c.id)! } : c));
 }

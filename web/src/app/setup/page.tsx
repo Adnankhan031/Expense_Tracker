@@ -6,7 +6,7 @@ export default function SetupPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-6 px-6 py-16">
       <div>
-        <p className="text-[11.5px] font-bold uppercase tracking-[0.16em] text-accent">Spendly</p>
+        <p className="text-[11.5px] font-bold uppercase tracking-[0.16em] text-brand">Spendly</p>
         <h1 className="mt-3 text-3xl font-extrabold tracking-tight">
           {configured ? 'Almost there' : 'One step left'}
         </h1>
@@ -35,7 +35,7 @@ export default function SetupPage() {
             ],
           ].map(([title, body], i) => (
             <li key={title} className="flex gap-3.5">
-              <span className="grid size-7 shrink-0 place-items-center rounded-full border border-line-strong text-xs font-bold text-accent">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full border border-line-strong text-xs font-bold text-brand">
                 {i + 1}
               </span>
               <span>
@@ -47,7 +47,7 @@ export default function SetupPage() {
         </ol>
       )}
 
-      <pre className="overflow-x-auto rounded-xl border border-line bg-card p-4 text-[12.5px] leading-relaxed text-dim">
+      <pre className="overflow-x-auto rounded-xl border border-line bg-surface p-4 text-[12.5px] leading-relaxed text-dim">
         {`NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...`}
       </pre>

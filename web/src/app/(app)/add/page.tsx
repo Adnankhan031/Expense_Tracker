@@ -7,6 +7,8 @@ import { parseInput } from '@/lib/parser';
 import { runQuery, type Answer } from '@/lib/analytics';
 import { DatePicker } from '@/components/pickers';
 import { TxnEditor } from '@/components/TxnEditor';
+import { IconTile } from '@/lib/icons';
+import { ArrowUp, MessageSquareText, Plus, Trash2, X } from 'lucide-react';
 import { Chip, EmptyState, Spinner, cx } from '@/components/ui';
 import { dayLabel, shortDayLabel, todayLocal } from '@/lib/format';
 import type { ChatMessage, TxnView } from '@/lib/types';
@@ -138,18 +140,18 @@ export default function AddPage() {
             type="button"
             onClick={() => setCreating(true)}
             aria-label="Add manually"
-            className="grid size-9 place-items-center rounded-xl bg-card-alt text-xl active:scale-95"
+            className="grid size-9 place-items-center rounded-xl bg-sunken text-dim active:scale-95"
           >
-            +
+            <Plus size={18} />
           </button>
           {messages.length > 0 && (
             <button
               type="button"
               onClick={clearThread}
               aria-label="Clear thread"
-              className="grid size-9 place-items-center rounded-xl bg-card-alt text-sm text-dim active:scale-95"
+              className="grid size-9 place-items-center rounded-xl bg-sunken text-dim active:scale-95"
             >
-              ⌫
+              <Trash2 size={16} />
             </button>
           )}
         </div>
@@ -159,10 +161,10 @@ export default function AddPage() {
             onClick={() => setShowDate(true)}
             className={cx(
               'rounded-full px-3 py-1.5 text-[12.5px] font-bold transition active:scale-95',
-              pinnedIsToday ? 'bg-card-alt text-dim' : 'bg-accent-soft text-accent'
+              pinnedIsToday ? 'bg-sunken text-dim' : 'bg-brand-soft text-brand'
             )}
           >
-            📅 Adding to · {dayLabel(pinnedDate)}
+            Adding to · {dayLabel(pinnedDate)}
           </button>
           {!pinnedIsToday && <Chip label="Reset" small onClick={() => setPinnedDate(today)} />}
         </div>
@@ -179,7 +181,7 @@ export default function AddPage() {
         {!loading && messages.length === 0 && (
           <div className="flex flex-1 flex-col justify-center">
             <EmptyState
-              icon="💬"
+              icon={MessageSquareText}
               title="Type what you spent"
               body="No forms. Write it the way you would say it — the amount, what it was for, and a date if it was not today."
             />
@@ -192,7 +194,7 @@ export default function AddPage() {
                     setInput(h);
                     taRef.current?.focus();
                   }}
-                  className="rounded-full bg-card-alt px-3.5 py-2 text-[13px] text-dim active:scale-95"
+                  className="rounded-full bg-sunken px-3.5 py-2 text-[13px] text-dim active:scale-95"
                 >
                   {h}
                 </button>
@@ -205,7 +207,7 @@ export default function AddPage() {
           if (m.role === 'user') {
             return (
               <div key={m.id} className="rise max-w-[84%] self-end">
-                <div className="rounded-2xl rounded-br-sm bg-accent px-3.5 py-2.5 text-[15px] font-semibold text-on-accent">
+                <div className="rounded-2xl rounded-br-sm bg-brand px-3.5 py-2.5 text-[15px] font-semibold text-on-brand">
                   {m.text}
                 </div>
               </div>
@@ -218,11 +220,11 @@ export default function AddPage() {
             return (
               <div key={m.id} className="rise w-[92%] self-start">
                 <div
-                  className="rounded-2xl rounded-bl-sm border border-line bg-card p-3"
+                  className="rounded-2xl rounded-bl-sm border border-line bg-surface p-3"
                   style={{ borderLeft: `3px solid ${tx.cat_color}` }}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{tx.cat_icon}</span>
+                    <IconTile name={tx.cat_icon} color={tx.cat_color} size={32} />
                     <button
                       type="button"
                       onClick={() => setEditing(tx)}
@@ -232,7 +234,7 @@ export default function AddPage() {
                       {tx.note && <span className="block truncate text-xs text-dim">{tx.note}</span>}
                     </button>
                     <span
-                      className={cx('tabular text-[17px] font-bold', tx.type === 'income' && 'text-accent')}
+                      className={cx('tabular text-[17px] font-bold', tx.type === 'income' && 'text-brand')}
                     >
                       {tx.type === 'income' ? '+' : ''}
                       {fmt(tx.amount_minor)}
@@ -243,7 +245,7 @@ export default function AddPage() {
                       aria-label="Delete"
                       className="pl-1 text-faint active:opacity-60"
                     >
-                      ✕
+                      <X size={15} />
                     </button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -261,7 +263,7 @@ export default function AddPage() {
             if (!a) return null;
             const max = Math.max(1, ...a.bars.map((b) => b.value));
             return (
-              <div key={m.id} className="rise w-[94%] self-start rounded-2xl rounded-bl-sm border border-line bg-card p-3.5">
+              <div key={m.id} className="rise w-[94%] self-start rounded-2xl rounded-bl-sm border border-line bg-surface p-3.5">
                 <p className="text-[11.5px] font-bold uppercase tracking-wider text-dim">{a.headline}</p>
                 <p className="tabular mt-1 text-3xl font-extrabold">{a.value}</p>
                 <p className="mt-1 text-[13px] leading-5 text-dim">{a.detail}</p>
@@ -270,7 +272,7 @@ export default function AddPage() {
                     {a.bars.map((b, i) => (
                       <div
                         key={i}
-                        className="flex-1 rounded-sm bg-accent"
+                        className="flex-1 rounded-sm bg-brand"
                         style={{
                           height: Math.max(2, (b.value / max) * 36),
                           opacity: b.value === 0 ? 0.15 : b.highlight ? 1 : 0.5,
@@ -296,7 +298,7 @@ export default function AddPage() {
 
           return (
             <div key={m.id} className="rise max-w-[88%] self-start">
-              <div className="rounded-2xl rounded-bl-sm bg-card-alt px-3.5 py-2.5 text-[13.5px] leading-5 text-dim">
+              <div className="rounded-2xl rounded-bl-sm bg-sunken px-3.5 py-2.5 text-[13.5px] leading-5 text-dim">
                 {m.text}
               </div>
             </div>
@@ -306,7 +308,7 @@ export default function AddPage() {
       </div>
 
       {/* composer */}
-      <div className="safe-b sticky bottom-[calc(72px+env(safe-area-inset-bottom,0px))] z-20 border-t border-line bg-elev px-3 py-2.5">
+      <div className="safe-b sticky bottom-[calc(72px+env(safe-area-inset-bottom,0px))] z-20 border-t border-line bg-surface px-3 py-2.5">
         <div className="mx-auto flex max-w-2xl items-end gap-2">
           <textarea
             ref={taRef}
@@ -320,7 +322,7 @@ export default function AddPage() {
             }}
             rows={1}
             placeholder={pinnedIsToday ? 'food 300' : `Adding to ${dayLabel(pinnedDate)}…`}
-            className="max-h-28 flex-1 resize-none rounded-[20px] bg-card-alt px-4 py-2.5 text-[15.5px] outline-none"
+            className="max-h-28 flex-1 resize-none rounded-[20px] bg-sunken px-4 py-2.5 text-[15.5px] outline-none"
           />
           <button
             type="button"
@@ -329,10 +331,10 @@ export default function AddPage() {
             aria-label="Send"
             className={cx(
               'grid size-10 shrink-0 place-items-center rounded-full text-lg transition active:scale-95',
-              input.trim() ? 'bg-accent text-on-accent' : 'bg-card-alt text-faint'
+              input.trim() ? 'bg-brand text-on-brand' : 'bg-sunken text-faint'
             )}
           >
-            {sending ? <Spinner /> : '↑'}
+            {sending ? <Spinner /> : <ArrowUp size={18} />}
           </button>
         </div>
       </div>
@@ -358,9 +360,9 @@ function MiniChip({ label, tone }: { label: string; tone?: 'accent' | 'warn' }) 
     <span
       className={cx(
         'rounded-full px-2 py-0.5 text-[10.5px] font-bold',
-        tone === 'accent' && 'bg-accent-soft text-accent',
-        tone === 'warn' && 'bg-danger-soft text-danger',
-        !tone && 'bg-card-alt text-dim'
+        tone === 'accent' && 'bg-brand-soft text-brand',
+        tone === 'warn' && 'bg-down-soft text-down',
+        !tone && 'bg-sunken text-dim'
       )}
     >
       {label}

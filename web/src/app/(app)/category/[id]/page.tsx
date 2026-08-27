@@ -4,7 +4,9 @@ import React, { useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { Bars, HBar, Ring } from '@/components/charts';
-import { Card, EmptyState, IconBadge, SectionTitle, Segmented, Spinner, cx } from '@/components/ui';
+import { ChevronLeft, CircleHelp, NotebookPen } from 'lucide-react';
+import { Card, EmptyState, SectionTitle, Segmented, Spinner, cx } from '@/components/ui';
+import { IconTile } from '@/lib/icons';
 import { TxnEditor } from '@/components/TxnEditor';
 import { MONTHS_SHORT, currentMonth, dayLabel, monthEnd, monthLabel, monthStart, shiftMonth } from '@/lib/format';
 import type { TxnView } from '@/lib/types';
@@ -72,7 +74,7 @@ export default function CategoryPage() {
   if (!category) {
     return (
       <div className="px-4 pt-6">
-        <EmptyState icon="🤔" title="Category not found" />
+        <EmptyState icon={CircleHelp} title="Category not found" />
       </div>
     );
   }
@@ -80,10 +82,14 @@ export default function CategoryPage() {
   return (
     <div className="px-4 pb-8">
       <header className="flex items-center gap-2 pt-4 pb-3">
-        <button type="button" onClick={() => router.back()} className="-ml-2 px-2 text-2xl text-dim">
-          ‹
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="grid size-9 shrink-0 place-items-center rounded-lg bg-sunken text-dim active:scale-90"
+        >
+          <ChevronLeft size={18} />
         </button>
-        <IconBadge icon={category.icon} color={category.color} size={44} />
+        <IconTile name={category.icon} color={category.color} size={44} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-xl font-extrabold tracking-tight">{category.name}</span>
           <span className="block text-[12.5px] text-dim">
@@ -137,7 +143,7 @@ export default function CategoryPage() {
               height={9}
               color={
                 thisMonthSpend >= budget
-                  ? 'var(--color-danger)'
+                  ? 'var(--color-down)'
                   : thisMonthSpend >= budget * 0.8
                     ? 'var(--color-warn)'
                     : category.color
@@ -150,7 +156,7 @@ export default function CategoryPage() {
       <SectionTitle>Entries</SectionTitle>
       {rows.length === 0 ? (
         <Card>
-          <EmptyState icon="🗒" title="No entries yet" body={`Nothing logged under ${category.name} in this window.`} />
+          <EmptyState icon={NotebookPen} title="No entries yet" body={`Nothing logged under ${category.name} in this window.`} />
         </Card>
       ) : (
         <Card>
@@ -181,7 +187,7 @@ export default function CategoryPage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-xl bg-card p-3.5">
+    <div className="min-w-0 rounded-xl bg-surface p-3.5">
       <p className="text-[10.5px] font-bold uppercase tracking-wider text-faint">{label}</p>
       <p className="tabular mt-1 truncate text-lg font-bold">{value}</p>
     </div>

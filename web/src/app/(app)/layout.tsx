@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           Set <code className="text-ink">NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
           <code className="text-ink">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>, then redeploy.
         </p>
-        <Link href="/setup" className="font-semibold text-accent">
+        <Link href="/setup" className="font-semibold text-brand">
           Show me how →
         </Link>
       </main>

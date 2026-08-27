@@ -2,11 +2,35 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
+import {
+  ChevronLeft,
+  ChevronRight,
+  CirclePlus,
+  Eye,
+  EyeOff,
+  FileSpreadsheet,
+  FileText,
+  FileDown,
+  Gauge,
+  ListPlus,
+  LogOut,
+  Monitor,
+  Moon,
+  Sparkles,
+  Sun,
+  Tags,
+  Trash2,
+  Wallet,
+  X,
+} from 'lucide-react';
 import { signOut, useStore } from '@/lib/store';
 import * as q from '@/lib/queries';
-import { Button, Card, Chip, Divider, IconBadge, Row, SectionTitle, Segmented, cx, inputClass } from '@/components/ui';
+import { Button, Card, Chip, Divider, PageTitle, Row, SectionTitle, Segmented, cx, inputClass } from '@/components/ui';
 import { HBar } from '@/components/charts';
+import { CategoryIcon, ICON_CHOICES, IconTile } from '@/lib/icons';
 import { CATEGORY_COLORS } from '@/lib/colors';
+import { CURRENCIES } from '@/lib/currency';
+import { exportCsv, exportPdf, exportXlsx } from '@/lib/export';
 import { currentMonth, dayLabel, monthEnd, monthLabel, monthStart, toMinor } from '@/lib/format';
 import { totalsByCategory } from '@/lib/analytics';
 import type { Category } from '@/lib/types';
@@ -15,49 +39,50 @@ type Panel = 'none' | 'categories' | 'budgets' | 'accounts' | 'learned';
 type ThemeMode = 'system' | 'light' | 'dark';
 
 export default function SettingsPage() {
-  const store = useStore();
-  const { user, txns, aliases, currency, setCurrency, numberStyle, setNumberStyle, refresh } = store;
+  const { user, txns, aliases, currency, setCurrencyCode, refresh } = useStore();
   const [panel, setPanel] = useState<Panel>('none');
   const [theme, setTheme] = useState<ThemeMode>('dark');
+  const [busy, setBusy] = useState<string | null>(null);
 
   React.useEffect(() => {
-    const saved = (localStorage.getItem('spendly-theme') as ThemeMode) || 'dark';
-    setTheme(saved);
+    setTheme((localStorage.getItem('spendly-theme') as ThemeMode) || 'dark');
   }, []);
 
   const applyTheme = (mode: ThemeMode) => {
     setTheme(mode);
     localStorage.setItem('spendly-theme', mode);
-    const light =
-      mode === 'light' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+    const light = mode === 'light' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
     if (light) document.documentElement.dataset.theme = 'light';
     else delete document.documentElement.dataset.theme;
   };
 
   const since = txns.length ? txns[txns.length - 1].local_date : null;
 
-  const exportCsv = () => {
-    const header = 'date,type,category,amount,method,note,source\n';
-    const body = txns
-      .map((r) =>
-        [
-          r.local_date,
-          r.type,
-          `"${r.cat_name.replace(/"/g, '""')}"`,
-          (r.amount_minor / 100).toFixed(2),
-          r.method ?? '',
-          `"${(r.note ?? '').replace(/"/g, '""')}"`,
-          r.source,
-        ].join(',')
-      )
-      .join('\n');
-    const blob = new Blob([header + body], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `spendly-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const meta = useMemo(() => {
+    const from = txns.length ? txns[txns.length - 1].local_date : monthStart(currentMonth());
+    const to = txns.length ? txns[0].local_date : monthEnd(currentMonth());
+    return {
+      currency,
+      label: 'All time',
+      from,
+      to,
+      expense: txns.filter((t) => t.type === 'expense').reduce((a, b) => a + b.amount_minor, 0),
+      income: txns.filter((t) => t.type === 'income').reduce((a, b) => a + b.amount_minor, 0),
+      byCategory: totalsByCategory(txns, from, to, 'expense'),
+    };
+  }, [txns, currency]);
+
+  const run = async (kind: string, fn: () => void | Promise<void>) => {
+    if (!txns.length) {
+      alert('Nothing to export yet — add a few entries first.');
+      return;
+    }
+    setBusy(kind);
+    try {
+      await fn();
+    } finally {
+      setBusy(null);
+    }
   };
 
   const wipe = async () => {
@@ -72,27 +97,27 @@ export default function SettingsPage() {
   if (panel === 'learned') return <LearnedPanel onBack={() => setPanel('none')} />;
 
   return (
-    <div className="px-4 pb-8">
-      <header className="pt-4">
-        <h1 className="text-3xl font-extrabold tracking-tight">Settings</h1>
-        <p className="mt-1 text-[13px] text-dim">
-          {txns.length} entries{since ? ` since ${dayLabel(since)}` : ''} · {aliases.length} learned words
-        </p>
-        <p className="mt-0.5 text-[12px] text-faint">{user.email}</p>
-      </header>
+    <div className="px-4 pb-10">
+      <PageTitle
+        title="Settings"
+        subtitle={`${txns.length} entries${since ? ` since ${dayLabel(since)}` : ''} · ${aliases.length} learned words`}
+      />
+      <p className="mt-1 text-[12px] text-faint">{user.email}</p>
 
-      <SectionTitle>Catching up</SectionTitle>
-      <Link href="/backfill" className="block">
-        <Card>
+      <SectionTitle>Adding entries</SectionTitle>
+      <Link href="/manual" className="block">
+        <Card tone="brand">
           <div className="flex items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-lg">🕘</span>
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
+              <ListPlus size={20} />
+            </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[15.5px] font-bold">Add past months</span>
+              <span className="block text-[15.5px] font-bold">Add by day, week or month</span>
               <span className="mt-0.5 block text-[12.5px] leading-5 text-dim">
-                Lump sum per category, paste a whole list, or pin the chat to an older day.
+                Full manual control for any date — including months from before you started.
               </span>
             </span>
-            <span className="text-faint">›</span>
+            <ChevronRight size={17} className="text-faint" />
           </div>
         </Card>
       </Link>
@@ -100,60 +125,129 @@ export default function SettingsPage() {
       <SectionTitle>Appearance</SectionTitle>
       <Card>
         <p className="mb-2 text-xs font-semibold text-dim">Theme</p>
-        <Segmented
-          options={[
-            { value: 'system' as ThemeMode, label: 'System' },
-            { value: 'light' as ThemeMode, label: 'Light' },
-            { value: 'dark' as ThemeMode, label: 'Dark' },
-          ]}
-          value={theme}
-          onChange={applyTheme}
-        />
-
-        <p className="mt-5 mb-2 text-xs font-semibold text-dim">Currency</p>
-        <div className="flex flex-wrap gap-2">
-          {['₹', '$', '€', '£', '¥', 'AED', '₦'].map((c) => (
-            <Chip key={c} label={c} active={currency === c} onClick={() => setCurrency(c)} />
+        <div className="flex gap-1 rounded-xl border border-line bg-sunken p-1">
+          {(
+            [
+              ['system', 'System', Monitor],
+              ['light', 'Light', Sun],
+              ['dark', 'Dark', Moon],
+            ] as const
+          ).map(([mode, label, Icon]) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => applyTheme(mode)}
+              className={cx(
+                'flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-bold transition',
+                theme === mode ? 'bg-brand text-on-brand' : 'text-dim'
+              )}
+            >
+              <Icon size={14} />
+              {label}
+            </button>
           ))}
         </div>
 
-        <p className="mt-5 mb-2 text-xs font-semibold text-dim">Number grouping</p>
-        <Segmented
-          options={[
-            { value: 'indian' as const, label: '1,00,000' },
-            { value: 'international' as const, label: '100,000' },
-          ]}
-          value={numberStyle}
-          onChange={setNumberStyle}
-        />
+        <p className="mt-5 mb-2 text-xs font-semibold text-dim">Currency</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {CURRENCIES.map((c) => (
+            <button
+              key={c.code}
+              type="button"
+              onClick={() => setCurrencyCode(c.code)}
+              className={cx(
+                'flex items-center gap-2 rounded-xl border p-2.5 text-left transition active:scale-95',
+                currency.code === c.code ? 'border-brand bg-brand-soft' : 'border-line bg-sunken'
+              )}
+            >
+              <span
+                className={cx(
+                  'tabular grid size-8 shrink-0 place-items-center rounded-lg text-[15px] font-bold',
+                  currency.code === c.code ? 'bg-brand text-on-brand' : 'bg-raised text-dim'
+                )}
+              >
+                {c.symbol.trim()}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[12.5px] font-bold">{c.code}</span>
+                <span className="block truncate text-[10.5px] text-faint">{c.name}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] leading-4 text-faint">
+          {currency.digits === 0
+            ? `${currency.name} has no decimal places, so amounts show as whole ${currency.code}.`
+            : `Grouped ${currency.grouping === 'indian' ? 'the Indian way (1,00,000)' : 'as 100,000'}.`}
+        </p>
       </Card>
 
       <SectionTitle>Manage</SectionTitle>
       <Card>
-        <Row title="Categories" subtitle="Add, rename, recolour, or hide" right={<span className="text-faint">›</span>} onClick={() => setPanel('categories')} />
-        <Divider />
-        <Row title="Budgets" subtitle="Monthly caps overall and per category" right={<span className="text-faint">›</span>} onClick={() => setPanel('budgets')} />
-        <Divider />
-        <Row title="Accounts" subtitle="Cash, bank, card, wallet" right={<span className="text-faint">›</span>} onClick={() => setPanel('accounts')} />
+        <Row
+          icon={<Tags size={19} />}
+          title="Categories"
+          subtitle="Icons, colours, keywords"
+          right={<ChevronRight size={17} className="text-faint" />}
+          onClick={() => setPanel('categories')}
+        />
         <Divider />
         <Row
+          icon={<Gauge size={19} />}
+          title="Budgets"
+          subtitle="Monthly caps overall and per category"
+          right={<ChevronRight size={17} className="text-faint" />}
+          onClick={() => setPanel('budgets')}
+        />
+        <Divider />
+        <Row
+          icon={<Wallet size={19} />}
+          title="Accounts"
+          subtitle="Cash, bank, card, wallet"
+          right={<ChevronRight size={17} className="text-faint" />}
+          onClick={() => setPanel('accounts')}
+        />
+        <Divider />
+        <Row
+          icon={<Sparkles size={19} />}
           title="Learned words"
           subtitle={`${aliases.length} words mapped to categories`}
-          right={<span className="text-faint">›</span>}
+          right={<ChevronRight size={17} className="text-faint" />}
           onClick={() => setPanel('learned')}
         />
       </Card>
 
-      <SectionTitle>Data</SectionTitle>
+      <SectionTitle>Export</SectionTitle>
       <Card>
-        <Row title="Export as CSV" subtitle="Download every entry as a spreadsheet" onClick={exportCsv} />
+        <Row
+          icon={<FileSpreadsheet size={19} />}
+          title="Excel workbook"
+          subtitle="Summary, every transaction, and a month-by-month sheet"
+          right={busy === 'xlsx' ? <span className="text-[11px] text-dim">Working…</span> : <FileDown size={16} className="text-faint" />}
+          onClick={() => run('xlsx', () => exportXlsx(txns, meta))}
+        />
         <Divider />
-        <Row title="Delete all data" subtitle="Cannot be undone" danger onClick={wipe} />
+        <Row
+          icon={<FileText size={19} />}
+          title="PDF report"
+          subtitle="Formatted report with totals and category breakdown"
+          right={busy === 'pdf' ? <span className="text-[11px] text-dim">Working…</span> : <FileDown size={16} className="text-faint" />}
+          onClick={() => run('pdf', () => exportPdf(txns, meta))}
+        />
+        <Divider />
+        <Row
+          icon={<FileDown size={19} />}
+          title="CSV"
+          subtitle="Plain rows for any other tool"
+          onClick={() => run('csv', () => exportCsv(txns, currency))}
+        />
       </Card>
 
-      <SectionTitle>Account</SectionTitle>
+      <SectionTitle>Danger zone</SectionTitle>
       <Card>
-        <Row title="Sign out" subtitle={user.email ?? ''} onClick={() => void signOut()} />
+        <Row icon={<Trash2 size={19} />} title="Delete all data" subtitle="Cannot be undone" danger onClick={wipe} />
+        <Divider />
+        <Row icon={<LogOut size={19} />} title="Sign out" subtitle={user.email ?? ''} onClick={() => void signOut()} />
       </Card>
 
       <p className="mt-8 text-center text-[11.5px] leading-5 text-faint">
@@ -165,24 +259,25 @@ export default function SettingsPage() {
   );
 }
 
-/* --------------------------------------------------------------- categories */
+/* ------------------------------------------------------------------ shared */
 
-function PanelHeader({ title, onBack }: { title: string; onBack: () => void }) {
+function PanelHeader({ title, onBack, action }: { title: string; onBack: () => void; action?: React.ReactNode }) {
   return (
-    <header className="flex items-center gap-2 pt-4 pb-2">
-      <button type="button" onClick={onBack} className="-ml-2 px-2 text-2xl text-dim">
-        ‹
+    <header className="flex items-center gap-2 pt-5 pb-2">
+      <button
+        type="button"
+        onClick={onBack}
+        className="grid size-9 shrink-0 place-items-center rounded-lg bg-sunken text-dim active:scale-90"
+      >
+        <ChevronLeft size={18} />
       </button>
-      <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
+      <h1 className="flex-1 text-[24px] font-extrabold tracking-[-0.02em]">{title}</h1>
+      {action}
     </header>
   );
 }
 
-const ICON_CHOICES = [
-  '🍜', '🛒', '🚕', '⛽', '💡', '🏠', '🛍️', '🩺', '🎬', '🔁', '✈️', '📚',
-  '💇', '🎁', '⚡', '👨‍👩‍👧', '📈', '🏦', '📦', '💰', '💼', '🪙', '↩️', '✨',
-  '☕', '🍺', '🐶', '🎮', '🚗', '📱', '💊', '🧾',
-];
+/* -------------------------------------------------------------- categories */
 
 function CategoriesPanel({ onBack }: { onBack: () => void }) {
   const { categories, user, refresh } = useStore();
@@ -193,31 +288,50 @@ function CategoriesPanel({ onBack }: { onBack: () => void }) {
   const list = categories.filter((c) => (showHidden ? true : !c.archived));
 
   return (
-    <div className="px-4 pb-8">
-      <PanelHeader title="Categories" onBack={onBack} />
+    <div className="px-4 pb-10">
+      <PanelHeader
+        title="Categories"
+        onBack={onBack}
+        action={
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="grid size-9 place-items-center rounded-lg bg-brand text-on-brand active:scale-90"
+          >
+            <CirclePlus size={18} />
+          </button>
+        }
+      />
       <p className="text-[13px] leading-5 text-dim">
-        Keywords are what the chat parser looks for. Add the words you actually type — shop names, nicknames, anything.
+        Keywords are what the chat parser matches on. Add the words you actually type — shop names, nicknames, anything.
       </p>
 
-      <div className="mt-3 flex gap-2">
-        <Chip label="＋ New category" active onClick={() => setCreating(true)} />
-        <Chip label={showHidden ? 'Hide hidden' : 'Show hidden'} onClick={() => setShowHidden(!showHidden)} />
+      <div className="mt-3">
+        <Chip
+          label={showHidden ? 'Hide hidden' : 'Show hidden'}
+          icon={showHidden ? EyeOff : Eye}
+          onClick={() => setShowHidden(!showHidden)}
+        />
       </div>
 
       {(['expense', 'income'] as const).map((kind) => (
         <React.Fragment key={kind}>
           <SectionTitle>{kind === 'expense' ? 'Expense' : 'Income'}</SectionTitle>
-          <Card>
+          <Card className="p-0">
             {list
               .filter((c) => c.kind === kind)
-              .map((c) => (
+              .map((c, i) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => setEditing(c)}
-                  className={cx('flex w-full items-center gap-3 py-2.5 text-left', c.archived && 'opacity-45')}
+                  className={cx(
+                    'flex w-full items-center gap-3 px-4 py-3 text-left transition active:opacity-70',
+                    i > 0 && 'border-t border-line',
+                    c.archived && 'opacity-45'
+                  )}
                 >
-                  <IconBadge icon={c.icon} color={c.color} size={36} />
+                  <IconTile name={c.icon} color={c.color} size={36} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15px] font-semibold">{c.name}</span>
                     <span className="block truncate text-[11px] text-faint">
@@ -225,7 +339,7 @@ function CategoriesPanel({ onBack }: { onBack: () => void }) {
                       {c.keywords.split('|').filter(Boolean).slice(0, 4).join(', ') || 'no keywords'}
                     </span>
                   </span>
-                  <span className="text-faint">›</span>
+                  <ChevronRight size={16} className="text-faint" />
                 </button>
               ))}
           </Card>
@@ -235,6 +349,7 @@ function CategoriesPanel({ onBack }: { onBack: () => void }) {
       <CategoryEditor
         open={!!editing || creating}
         category={editing}
+        userId={user.id}
         onClose={() => {
           setEditing(null);
           setCreating(false);
@@ -244,7 +359,6 @@ function CategoriesPanel({ onBack }: { onBack: () => void }) {
           setEditing(null);
           setCreating(false);
         }}
-        userId={user.id}
       />
     </div>
   );
@@ -264,7 +378,7 @@ function CategoryEditor({
   onSaved: () => void;
 }) {
   const [name, setName] = useState('');
-  const [icon, setIcon] = useState('📦');
+  const [icon, setIcon] = useState('package');
   const [color, setColor] = useState(CATEGORY_COLORS[0]);
   const [kind, setKind] = useState<'expense' | 'income'>('expense');
   const [keywords, setKeywords] = useState('');
@@ -273,7 +387,7 @@ function CategoryEditor({
   React.useEffect(() => {
     if (!open) return;
     setName(category?.name ?? '');
-    setIcon(category?.icon ?? '📦');
+    setIcon(category?.icon ?? 'package');
     setColor(category?.color ?? CATEGORY_COLORS[0]);
     setKind(category?.kind ?? 'expense');
     setKeywords((category?.keywords ?? '').split('|').filter(Boolean).join(', '));
@@ -304,31 +418,47 @@ function CategoryEditor({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/60" />
-      <div className="rise safe-b relative max-h-[88dvh] overflow-y-auto rounded-t-3xl border-t border-line bg-elev p-4">
-        <h2 className="mb-3 text-[17px] font-bold">{category ? 'Edit category' : 'New category'}</h2>
+    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center">
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/65 backdrop-blur-[3px]" />
+      <div className="sheet-in safe-b relative max-h-[88dvh] w-full overflow-y-auto rounded-t-3xl border-t border-line bg-raised p-4 shadow-[var(--shadow-pop)] sm:max-w-md sm:rounded-3xl sm:border">
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="flex-1 text-[17px] font-bold">{category ? 'Edit category' : 'New category'}</h2>
+          <button type="button" onClick={onClose} className="grid size-8 place-items-center rounded-lg bg-sunken text-dim">
+            <X size={16} />
+          </button>
+        </div>
+
         <div className="flex flex-col gap-3">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className={inputClass} />
+          <div className="flex items-center gap-3 rounded-xl border border-line bg-sunken p-3">
+            <IconTile name={icon} color={color} size={44} />
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Category name"
+              className="w-full bg-transparent text-[16px] font-bold outline-none"
+            />
+          </div>
+
           <div className="flex gap-2">
             <Chip label="Expense" active={kind === 'expense'} onClick={() => setKind('expense')} />
             <Chip label="Income" active={kind === 'income'} onClick={() => setKind('income')} />
           </div>
 
           <p className="text-xs font-semibold text-dim">Icon</p>
-          <div className="flex flex-wrap gap-1.5">
-            {ICON_CHOICES.map((ic) => (
+          <div className="grid max-h-44 grid-cols-8 gap-1.5 overflow-y-auto rounded-xl border border-line bg-sunken p-2">
+            {ICON_CHOICES.map((n) => (
               <button
-                key={ic}
+                key={n}
                 type="button"
-                onClick={() => setIcon(ic)}
-                className="grid size-10 place-items-center rounded-xl text-lg"
-                style={{
-                  background: icon === ic ? color + '33' : 'var(--color-card-alt)',
-                  outline: icon === ic ? `1.5px solid ${color}` : undefined,
-                }}
+                onClick={() => setIcon(n)}
+                className="grid aspect-square place-items-center rounded-lg transition active:scale-90"
+                style={
+                  icon === n
+                    ? { background: color + '2e', color, outline: `1.5px solid ${color}` }
+                    : { background: 'var(--color-raised)', color: 'var(--color-dim)' }
+                }
               >
-                {ic}
+                <CategoryIcon name={n} size={17} />
               </button>
             ))}
           </div>
@@ -340,8 +470,9 @@ function CategoryEditor({
                 key={c}
                 type="button"
                 onClick={() => setColor(c)}
-                className="size-8 rounded-[10px]"
-                style={{ background: c, outline: color === c ? '3px solid var(--color-ink)' : undefined }}
+                aria-label={c}
+                className="size-8 rounded-[10px] transition active:scale-90"
+                style={{ background: c, outline: color === c ? '2.5px solid var(--color-ink)' : undefined, outlineOffset: 2 }}
               />
             ))}
           </div>
@@ -351,16 +482,17 @@ function CategoryEditor({
             value={keywords}
             onChange={(e) => setKeywords(e.target.value)}
             rows={3}
-            placeholder="swiggy, zomato, lunch, dinner"
+            placeholder="lunch, dinner, cafe, restaurant"
             className={cx(inputClass, 'resize-y')}
           />
 
-          <Button onClick={save} loading={busy}>
+          <Button onClick={save} loading={busy} disabled={!name.trim()}>
             Save
           </Button>
           {category && (
             <Button
               variant="ghost"
+              icon={category.archived ? Eye : EyeOff}
               onClick={async () => {
                 await q.setCategoryArchived(category.id, !category.archived);
                 onSaved();
@@ -408,8 +540,8 @@ function BudgetsPanel({ onBack }: { onBack: () => void }) {
   };
 
   const field = (key: string) => (
-    <span className="flex w-28 items-center rounded-lg bg-card-alt px-2.5">
-      <span className="text-sm text-faint">{currency}</span>
+    <span className="flex w-28 items-center rounded-lg border border-line bg-sunken px-2.5">
+      <span className="text-[13px] text-faint">{currency.symbol}</span>
       <input
         value={values[key] ?? ''}
         onChange={(e) => setValues((s) => ({ ...s, [key]: e.target.value.replace(/[^0-9.]/g, '') }))}
@@ -423,19 +555,18 @@ function BudgetsPanel({ onBack }: { onBack: () => void }) {
   const overall = Number(values['__all__'] || 0);
 
   return (
-    <div className="px-4 pb-8">
+    <div className="px-4 pb-10">
       <PanelHeader title="Budgets" onBack={onBack} />
       <p className="text-[13px] leading-5 text-dim">
-        Monthly caps. Leave a category blank for no limit. You will see progress on Overview and a nudge once you cross
-        80%.
+        Monthly caps. Leave a category blank for no limit. Overview shows progress and nudges you past 80%.
       </p>
 
-      <SectionTitle>Overall budget</SectionTitle>
+      <SectionTitle>Overall</SectionTitle>
       <Card>
         <div className="flex items-center gap-3">
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold">Everything, {monthLabel(ym, true)}</span>
-            <span className="block text-[11.5px] text-faint">Spent so far: {fmt(totalSpent)}</span>
+            <span className="tabular block text-[11.5px] text-faint">Spent so far: {fmt(totalSpent)}</span>
           </span>
           {field('__all__')}
         </div>
@@ -446,10 +577,10 @@ function BudgetsPanel({ onBack }: { onBack: () => void }) {
               height={9}
               color={
                 totalSpent >= toMinor(overall)
-                  ? 'var(--color-danger)'
+                  ? 'var(--color-down)'
                   : totalSpent >= toMinor(overall) * 0.8
                     ? 'var(--color-warn)'
-                    : 'var(--color-accent)'
+                    : 'var(--color-up)'
               }
             />
           </div>
@@ -466,10 +597,10 @@ function BudgetsPanel({ onBack }: { onBack: () => void }) {
             return (
               <div key={c.id} className="py-2">
                 <div className="flex items-center gap-2.5">
-                  <IconBadge icon={c.icon} color={c.color} size={34} />
+                  <IconTile name={c.icon} color={c.color} size={34} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14.5px] font-semibold">{c.name}</span>
-                    {used > 0 && <span className="block text-[11px] text-faint">{fmt(used)} used</span>}
+                    {used > 0 && <span className="tabular block text-[11px] text-faint">{fmt(used)} used</span>}
                   </span>
                   {field(c.id)}
                 </div>
@@ -479,7 +610,7 @@ function BudgetsPanel({ onBack }: { onBack: () => void }) {
                       fraction={used / toMinor(limit)}
                       color={
                         used >= toMinor(limit)
-                          ? 'var(--color-danger)'
+                          ? 'var(--color-down)'
                           : used >= toMinor(limit) * 0.8
                             ? 'var(--color-warn)'
                             : c.color
@@ -516,25 +647,27 @@ function AccountsPanel({ onBack }: { onBack: () => void }) {
   }, [txns]);
 
   return (
-    <div className="px-4 pb-8">
+    <div className="px-4 pb-10">
       <PanelHeader title="Accounts" onBack={onBack} />
       <p className="text-[13px] leading-5 text-dim">
-        Tag entries with where the money came from. The number below is income minus expenses for that account, not a
-        bank balance.
+        Tag entries with where the money came from. The figure is income minus expenses for that account, not a bank
+        balance.
       </p>
 
       <SectionTitle>Accounts</SectionTitle>
-      <Card>
+      <Card className="p-0">
         {accounts.map((a, i) => {
           const net = totals.get(a.id) ?? 0;
           return (
-            <div key={a.id} className={cx('flex items-center gap-3 py-3', i > 0 && 'border-t border-line')}>
-              <IconBadge icon={a.icon} color="#63A9FF" size={36} />
+            <div key={a.id} className={cx('flex items-center gap-3 px-4 py-3', i > 0 && 'border-t border-line')}>
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-sunken text-info">
+                <Wallet size={17} />
+              </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-semibold">{a.name}</span>
                 <span className="block text-[11.5px] capitalize text-faint">{a.kind}</span>
               </span>
-              <span className={cx('tabular text-sm font-bold', net >= 0 ? 'text-accent' : 'text-danger')}>
+              <span className={cx('tabular text-sm font-bold', net >= 0 ? 'text-up' : 'text-down')}>
                 {net > 0 ? '+' : ''}
                 {fmt(net)}
               </span>
@@ -545,9 +678,9 @@ function AccountsPanel({ onBack }: { onBack: () => void }) {
                   await q.archiveAccount(a.id);
                   await refresh();
                 }}
-                className="pl-1 text-faint"
+                className="text-faint active:scale-90"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
           );
@@ -563,13 +696,13 @@ function AccountsPanel({ onBack }: { onBack: () => void }) {
           className={cx(inputClass, 'flex-1')}
         />
         <Button
-          className="w-auto px-5"
+          className="w-auto shrink-0 px-5"
           loading={busy}
           disabled={!name.trim()}
           onClick={async () => {
             setBusy(true);
             try {
-              await q.saveAccount(user.id, { name: name.trim(), kind: 'cash', icon: '💵' });
+              await q.saveAccount(user.id, { name: name.trim(), kind: 'cash', icon: 'wallet' });
               setName('');
               await refresh();
             } finally {
@@ -590,7 +723,7 @@ function LearnedPanel({ onBack }: { onBack: () => void }) {
   const { aliases, categories, refresh } = useStore();
 
   return (
-    <div className="px-4 pb-8">
+    <div className="px-4 pb-10">
       <PanelHeader title="Learned words" onBack={onBack} />
       <p className="text-[13px] leading-5 text-dim">
         Every time you correct a category, the word you typed gets bound to it. That is why the app gets faster the
@@ -598,17 +731,17 @@ function LearnedPanel({ onBack }: { onBack: () => void }) {
       </p>
 
       <SectionTitle>{aliases.length} words</SectionTitle>
-      <Card>
+      <Card className="p-0">
         {aliases.length === 0 && (
-          <p className="py-6 text-center text-[13px] text-dim">
+          <p className="px-4 py-8 text-center text-[13px] text-dim">
             Nothing learned yet. Correct a category on any entry and the word you typed is remembered here.
           </p>
         )}
         {aliases.map((a, i) => {
           const cat = categories.find((c) => c.id === a.category_id);
           return (
-            <div key={a.id} className={cx('flex items-center gap-2.5 py-2.5', i > 0 && 'border-t border-line')}>
-              <IconBadge icon={cat?.icon ?? '📦'} color={cat?.color ?? '#90A4AE'} size={30} />
+            <div key={a.id} className={cx('flex items-center gap-2.5 px-4 py-3', i > 0 && 'border-t border-line')}>
+              <IconTile name={cat?.icon} color={cat?.color ?? '#8a9099'} size={32} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14.5px] font-semibold">{a.keyword}</span>
                 <span className="block truncate text-[11.5px] text-faint">
@@ -622,9 +755,9 @@ function LearnedPanel({ onBack }: { onBack: () => void }) {
                   await q.deleteAlias(a.id);
                   await refresh();
                 }}
-                className="text-faint"
+                className="text-faint active:scale-90"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
           );

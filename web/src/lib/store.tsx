@@ -5,9 +5,8 @@ import type { User } from '@supabase/supabase-js';
 import { supabaseBrowser } from './supabase/client';
 import * as q from './queries';
 import { formatMoney, todayLocal } from './format';
+import { CURRENCIES, DEFAULT_CURRENCY, currencyByCode, type Currency } from './currency';
 import type { Account, Alias, Budget, Category, TxnView } from './types';
-
-type NumberStyle = 'indian' | 'international';
 
 type Store = {
   /** The layout redirects to /login before rendering, so this is always set. */
@@ -20,12 +19,10 @@ type Store = {
   aliases: Alias[];
   aliasMap: Map<string, string>;
   budgets: Budget[];
-  currency: string;
-  numberStyle: NumberStyle;
+  currency: Currency;
+  setCurrencyCode: (code: string) => void;
   pinnedDate: string;
   setPinnedDate: (d: string) => void;
-  setCurrency: (c: string) => void;
-  setNumberStyle: (s: NumberStyle) => void;
   fmt: (minor: number) => string;
   fmtCompact: (minor: number) => string;
   refresh: () => Promise<void>;
@@ -41,16 +38,18 @@ export function StoreProvider({ user, children }: { user: User; children: React.
   const [txns, setTxns] = useState<TxnView[]>([]);
   const [aliases, setAliases] = useState<Alias[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [currency, setCurrencyState] = useState('₹');
-  const [numberStyle, setNumberStyleState] = useState<NumberStyle>('indian');
+  const [currencyCode, setCode] = useState(DEFAULT_CURRENCY);
   const [pinnedDate, setPinnedDate] = useState(todayLocal());
 
   const refresh = useCallback(async () => {
     try {
       setError(null);
       await q.ensureSeeded(user.id);
-      const [cats, accs, rows, als, buds, settings] = await Promise.all([
-        q.fetchCategories(),
+      let cats = await q.fetchCategories();
+      // Categories created before the icon set existed hold emoji; rewrite once.
+      cats = await q.migrateCategoryIcons(cats);
+
+      const [accs, rows, als, buds, settings] = await Promise.all([
         q.fetchAccounts(),
         q.fetchTxns(),
         q.fetchAliases(),
@@ -62,8 +61,9 @@ export function StoreProvider({ user, children }: { user: User; children: React.
       setTxns(q.withCategory(rows, cats));
       setAliases(als);
       setBudgets(buds);
-      if (settings.currency) setCurrencyState(settings.currency);
-      if (settings.numberStyle) setNumberStyleState(settings.numberStyle as NumberStyle);
+      if (settings.currencyCode && CURRENCIES.some((c) => c.code === settings.currencyCode)) {
+        setCode(settings.currencyCode);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -75,21 +75,15 @@ export function StoreProvider({ user, children }: { user: User; children: React.
     void refresh();
   }, [refresh]);
 
-  const setCurrency = useCallback(
-    (c: string) => {
-      setCurrencyState(c);
-      void q.setSetting(user.id, 'currency', c);
+  const setCurrencyCode = useCallback(
+    (code: string) => {
+      setCode(code);
+      void q.setSetting(user.id, 'currencyCode', code);
     },
     [user.id]
   );
 
-  const setNumberStyle = useCallback(
-    (s: NumberStyle) => {
-      setNumberStyleState(s);
-      void q.setSetting(user.id, 'numberStyle', s);
-    },
-    [user.id]
-  );
+  const currency = useMemo(() => currencyByCode(currencyCode), [currencyCode]);
 
   const aliasMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -98,12 +92,19 @@ export function StoreProvider({ user, children }: { user: User; children: React.
   }, [aliases]);
 
   const fmt = useCallback(
-    (minor: number) => formatMoney(minor, { symbol: currency, style: numberStyle }),
-    [currency, numberStyle]
+    (minor: number) =>
+      formatMoney(minor, { symbol: currency.symbol, style: currency.grouping, digits: currency.digits }),
+    [currency]
   );
   const fmtCompact = useCallback(
-    (minor: number) => formatMoney(minor, { symbol: currency, style: numberStyle, compact: true }),
-    [currency, numberStyle]
+    (minor: number) =>
+      formatMoney(minor, {
+        symbol: currency.symbol,
+        style: currency.grouping,
+        digits: currency.digits,
+        compact: true,
+      }),
+    [currency]
   );
 
   const value: Store = {
@@ -117,11 +118,9 @@ export function StoreProvider({ user, children }: { user: User; children: React.
     aliasMap,
     budgets,
     currency,
-    numberStyle,
+    setCurrencyCode,
     pinnedDate,
     setPinnedDate,
-    setCurrency,
-    setNumberStyle,
     fmt,
     fmtCompact,
     refresh,

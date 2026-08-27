@@ -4,7 +4,8 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import { rangeStats } from '@/lib/analytics';
-import { Bars, Donut, GroupedBars, HBar, TrendLine } from '@/components/charts';
+import { ChartNoAxesCombined } from 'lucide-react';
+import { Bars, Donut, GroupedBars, HBar, Legend, TrendLine } from '@/components/charts';
 import { Card, EmptyState, SectionTitle, Segmented, Spinner, cx } from '@/components/ui';
 import { currentMonth, dayLabel, monthEnd, monthLabel, monthStart, shiftMonth, todayLocal } from '@/lib/format';
 
@@ -75,7 +76,7 @@ export default function AnalyticsPage() {
       {stats.count === 0 ? (
         <Card className="mt-4">
           <EmptyState
-            icon="📊"
+            icon={ChartNoAxesCombined}
             title="No data in this window"
             body="Log a few expenses and the charts fill in automatically."
           />
@@ -118,13 +119,13 @@ export default function AnalyticsPage() {
           <Card>
             <GroupedBars data={stats.months} />
             <div className="mt-3 flex items-center gap-4 text-[11.5px]">
-              <Legend color="var(--color-danger)" label="Spent" />
-              <Legend color="var(--color-accent)" label="Earned" />
+              <Legend color="var(--color-down)" label="Spent" />
+              <Legend color="var(--color-brand)" label="Earned" />
               <span className="flex-1" />
               <span
                 className={cx(
                   'tabular font-bold',
-                  stats.income - stats.expense >= 0 ? 'text-accent' : 'text-danger'
+                  stats.income - stats.expense >= 0 ? 'text-brand' : 'text-down'
                 )}
               >
                 {stats.income - stats.expense >= 0 ? 'Saved ' : 'Short by '}
@@ -155,7 +156,7 @@ export default function AnalyticsPage() {
                       <span className="text-sm">{c.icon}</span>
                       <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold">{c.name}</span>
                       {delta !== null && Math.abs(delta) >= 5 && (
-                        <span className={cx('text-[11px] font-bold', delta > 0 ? 'text-danger' : 'text-accent')}>
+                        <span className={cx('text-[11px] font-bold', delta > 0 ? 'text-down' : 'text-brand')}>
                           {delta > 0 ? '+' : ''}
                           {Math.round(delta)}%
                         </span>
@@ -236,7 +237,7 @@ export default function AnalyticsPage() {
                   {stats.merchants.map((m) => (
                     <div key={m.note} className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate text-[13.5px] capitalize">{m.note}</span>
-                      <span className="rounded-full bg-card-alt px-2 py-0.5 text-[10.5px] font-bold text-dim">
+                      <span className="rounded-full bg-sunken px-2 py-0.5 text-[10.5px] font-bold text-dim">
                         {m.count}×
                       </span>
                       <span className="tabular text-[13px] font-bold">{fmt(m.total)}</span>
@@ -254,19 +255,10 @@ export default function AnalyticsPage() {
 
 function BigStat({ label, value, tone }: { label: string; value: string; tone?: 'accent' }) {
   return (
-    <div className="min-w-0 rounded-xl bg-card p-3.5">
+    <div className="min-w-0 rounded-xl bg-surface p-3.5">
       <p className="text-[10.5px] font-bold uppercase tracking-wider text-faint">{label}</p>
-      <p className={cx('tabular mt-1 truncate text-xl font-bold', tone === 'accent' && 'text-accent')}>{value}</p>
+      <p className={cx('tabular mt-1 truncate text-xl font-bold', tone === 'accent' && 'text-brand')}>{value}</p>
     </div>
-  );
-}
-
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="flex items-center gap-1.5 text-dim">
-      <span className="size-2.5 rounded-sm" style={{ background: color }} />
-      {label}
-    </span>
   );
 }
 

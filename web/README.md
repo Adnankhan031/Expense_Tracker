@@ -52,6 +52,35 @@ npm run dev
 
 ---
 
+## Adding entries
+
+The chat is the shortcut, not the only way in. **Add entries** (`/manual`) gives four
+modes:
+
+| Mode | For |
+|---|---|
+| **Day** | Pick any date, then tap a category tile, type an amount, add, repeat. Shows everything already logged that day. |
+| **Week** | A whole week at a glance with per-day bars. Tap a day to expand the quick-add inline. |
+| **Month** | One lump sum per category for an entire month — for months that predate the app. |
+| **Paste** | Many lines at once, parsed and previewed before anything is saved. |
+
+## Exports
+
+Settings offers three formats:
+
+- **Excel** — three sheets: a summary with category breakdown, every transaction with
+  an autofilter, and a month-by-month table.
+- **PDF** — a formatted report with summary tiles, category breakdown and the full
+  transaction table, paginated.
+- **CSV** — plain rows for anything else.
+
+## Currency
+
+Twelve currencies with correct decimal handling. **Yen and won have no decimal places**,
+so amounts render as whole units; the rupee groups Indian-style (1,00,000) while
+everything else groups as 100,000. Amounts are always stored as major x 100 regardless,
+so switching currency never rescales stored data.
+
 ## Checks
 
 ```bash

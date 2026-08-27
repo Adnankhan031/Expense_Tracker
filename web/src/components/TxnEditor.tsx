@@ -1,14 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Button, Chip, IconBadge, Sheet, inputClass } from './ui';
+import { CalendarDays, ChevronRight, Trash2 } from 'lucide-react';
+import { Button, Chip, Sheet, cx, inputClass } from './ui';
 import { CategoryPicker, DatePicker } from './pickers';
+import { IconTile } from '@/lib/icons';
 import { useStore } from '@/lib/store';
 import * as q from '@/lib/queries';
 import { dayLabel, toMinor } from '@/lib/format';
 import type { NewTxn, TxnView } from '@/lib/types';
 
-const METHODS = ['Cash', 'UPI', 'Card', 'Bank', 'Wallet'];
+const METHODS = ['Cash', 'Card', 'UPI', 'Bank', 'Wallet'];
 
 export function TxnEditor({
   open,
@@ -68,28 +70,18 @@ export function TxnEditor({
       const token = source.split(/[^a-z0-9']+/).find((w) => w.length >= 3);
       if (token && (!txn || txn.category_id !== categoryId)) await q.learnAlias(user.id, token, categoryId);
 
-      if (txn) {
-        await q.updateTxn(txn.id, {
-          amount_minor: minor,
-          type,
-          category_id: categoryId,
-          local_date: date,
-          method,
-          account_id: accountId,
-          note: note.trim() || null,
-        });
-      } else {
-        await q.insertTxn(user.id, {
-          amount_minor: minor,
-          type,
-          category_id: categoryId,
-          local_date: date,
-          method,
-          account_id: accountId,
-          note: note.trim() || null,
-          source: 'manual',
-        });
-      }
+      const body = {
+        amount_minor: minor,
+        type,
+        category_id: categoryId,
+        local_date: date,
+        method,
+        account_id: accountId,
+        note: note.trim() || null,
+      };
+      if (txn) await q.updateTxn(txn.id, body);
+      else await q.insertTxn(user.id, { ...body, source: 'manual' });
+
       await refresh();
       onClose();
     } finally {
@@ -117,36 +109,46 @@ export function TxnEditor({
           <Chip label="Income" active={type === 'income'} onClick={() => setType('income')} />
         </div>
 
-        <div className="flex items-center rounded-xl bg-card-alt px-3.5">
-          <span className="text-2xl font-bold text-dim">{currency}</span>
+        <div
+          className={cx(
+            'flex items-center rounded-2xl border px-4 transition',
+            type === 'income' ? 'border-up/40 bg-up-soft/40' : 'border-line bg-sunken'
+          )}
+        >
+          <span className={cx('text-2xl font-bold', type === 'income' ? 'text-up' : 'text-dim')}>
+            {currency.symbol}
+          </span>
           <input
             value={amount}
             onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
             inputMode="decimal"
             placeholder="0"
             autoFocus={!txn}
-            className="tabular w-full bg-transparent px-2 py-3 text-3xl font-extrabold outline-none"
+            className={cx(
+              'tabular w-full bg-transparent px-2 py-4 text-[34px] font-extrabold outline-none',
+              type === 'income' && 'text-up'
+            )}
           />
         </div>
 
         <button
           type="button"
           onClick={() => setShowCat(true)}
-          className="flex items-center gap-3 rounded-xl bg-card-alt p-3 text-left active:opacity-80"
+          className="flex items-center gap-3 rounded-xl border border-line bg-sunken p-3 text-left transition active:scale-[0.99]"
         >
-          <IconBadge icon={category?.icon ?? '📦'} color={category?.color ?? '#90A4AE'} size={34} />
+          <IconTile name={category?.icon} color={category?.color ?? '#8a9099'} size={36} />
           <span className="flex-1 text-[15px] font-semibold">{category?.name ?? 'Choose category'}</span>
-          <span className="text-faint">›</span>
+          <ChevronRight size={17} className="text-faint" />
         </button>
 
         <button
           type="button"
           onClick={() => setShowDate(true)}
-          className="flex items-center gap-3 rounded-xl bg-card-alt p-3.5 text-left active:opacity-80"
+          className="flex items-center gap-3 rounded-xl border border-line bg-sunken p-3.5 text-left transition active:scale-[0.99]"
         >
-          <span className="text-dim">📅</span>
+          <CalendarDays size={19} className="text-dim" />
           <span className="flex-1 text-[15px] font-semibold">{dayLabel(date)}</span>
-          <span className="text-faint">›</span>
+          <ChevronRight size={17} className="text-faint" />
         </button>
 
         <div className="flex flex-wrap gap-2">
@@ -160,7 +162,6 @@ export function TxnEditor({
             {accounts.map((a) => (
               <Chip
                 key={a.id}
-                icon={a.icon}
                 label={a.name}
                 small
                 active={accountId === a.id}
@@ -177,11 +178,11 @@ export function TxnEditor({
           className={inputClass}
         />
 
-        <Button onClick={save} loading={busy}>
+        <Button onClick={save} loading={busy} disabled={!Number(amount)}>
           {txn ? 'Save changes' : 'Add entry'}
         </Button>
         {txn && (
-          <Button variant="danger" onClick={remove} disabled={busy}>
+          <Button variant="danger" onClick={remove} disabled={busy} icon={Trash2}>
             Delete
           </Button>
         )}
