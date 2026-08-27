@@ -23,6 +23,7 @@ import {
   listMessages,
   softDeleteTxn,
   sumInRange,
+  txnsForDay,
   searchTxns,
 } from '../../src/db';
 import { parseInput } from '../../src/parser';
@@ -50,6 +51,7 @@ export default function ChatScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [todayTotal, setTodayTotal] = useState(0);
+  const [todayCount, setTodayCount] = useState(0);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const inputRef = useRef<TextInput>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -81,6 +83,7 @@ export default function ChatScreen() {
     }
     const today = todayLocal();
     setTodayTotal(sumInRange(today, today, 'expense'));
+    setTodayCount(txnsForDay(today).length);
 
   }, []);
 
@@ -304,77 +307,72 @@ export default function ChatScreen() {
 
   const header = useMemo(
     () => (
-      <View style={{ paddingHorizontal: space.lg, paddingTop: 4, paddingBottom: 10 }}>
+      <View style={{ paddingHorizontal: space.lg, paddingTop: 4, paddingBottom: 8 }}>
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            gap: space.md,
-            backgroundColor: t.brandSoft,
+            backgroundColor: t.surface,
             borderRadius: radius.lg,
-            borderWidth: 1,
-            borderColor: t.brand + '33',
-            paddingVertical: 13,
-            paddingHorizontal: 16,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: t.line,
+            overflow: 'hidden',
           }}
         >
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: t.brand,
-                fontSize: 10.5,
-                fontWeight: '800',
-                letterSpacing: 1.1,
-                textTransform: 'uppercase',
-                opacity: 0.85,
-              }}
-            >
-              Spent today
-            </Text>
-            <Money minor={todayTotal} size={30} color={t.brand} style={{ marginTop: 2 }} />
+          {/* the highlight is a rail and the number, not a slab of colour */}
+          <View style={{ width: 3, alignSelf: 'stretch', backgroundColor: t.brand }} />
+
+          <View style={{ flex: 1, paddingVertical: 12, paddingLeft: 14, paddingRight: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ color: t.dim, fontSize: 11.5, fontWeight: '600' }}>Spent today</Text>
+              {todayCount > 0 && (
+                <Text style={{ color: t.faint, fontSize: 11.5 }}>
+                  · {todayCount} {todayCount === 1 ? 'entry' : 'entries'}
+                </Text>
+              )}
+            </View>
+            <Money minor={todayTotal} size={28} style={{ marginTop: 1 }} />
           </View>
 
-          <Pressable
-            onPress={() => { tap(); setCreating(true); }}
-            style={({ pressed }) => ({
-              width: 34,
-              height: 34,
-              borderRadius: radius.md,
-              backgroundColor: t.brand,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: pressed ? 0.75 : 1,
-            })}
-          >
-            <Plus size={18} color={t.onBrand} />
-          </Pressable>
-          {messages.length > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 10 }}>
+            {messages.length > 0 && (
+              <Pressable
+                onPress={() => { tap(); clearMessages(); refresh(); }}
+                hitSlop={10}
+                style={({ pressed }) => ({ padding: 8, opacity: pressed ? 0.5 : 1 })}
+              >
+                <Trash2 size={16} color={t.faint} />
+              </Pressable>
+            )}
             <Pressable
-              onPress={() => { tap(); clearMessages(); refresh(); }}
-              hitSlop={8}
-              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 0.6 })}
+              onPress={() => { tap(); setCreating(true); }}
+              style={({ pressed }) => ({
+                width: 34,
+                height: 34,
+                borderRadius: radius.md,
+                backgroundColor: t.brandSoft,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.7 : 1,
+              })}
             >
-              <Trash2 size={16} color={t.brand} />
+              <Plus size={18} color={t.brand} />
             </Pressable>
-          )}
+          </View>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
           <Pressable
             onPress={() => { tap(); setShowDate(true); }}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              backgroundColor: t.sunken,
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: t.line,
-              paddingHorizontal: 11,
-              paddingVertical: 6,
+            style={({ pressed }) => ({
+              paddingHorizontal: 10,
+              paddingVertical: 5,
               borderRadius: radius.pill,
-            }}
+              backgroundColor: pinnedIsToday ? 'transparent' : t.brandSoft,
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
-            <Text style={{ color: pinnedIsToday ? t.dim : t.brand, fontSize: 12.5, fontWeight: '700' }}>
+            <Text style={{ color: pinnedIsToday ? t.faint : t.brand, fontSize: 12, fontWeight: '600' }}>
               Adding to · {dayLabel(pinnedDate)}
             </Text>
           </Pressable>
@@ -382,7 +380,7 @@ export default function ChatScreen() {
         </View>
       </View>
     ),
-    [t, todayTotal, pinnedDate, pinnedIsToday, messages.length, refresh, setPinnedDate]
+    [t, todayTotal, todayCount, pinnedDate, pinnedIsToday, messages.length, refresh, setPinnedDate]
   );
 
   return (
@@ -399,7 +397,7 @@ export default function ChatScreen() {
           keyboardDismissMode="interactive"
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
           ListEmptyComponent={
-            <View style={{ flex: 1, justifyContent: 'center' }}>
+            <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 90 }}>
               <EmptyState
                 icon={<MessageSquareText size={22} color={t.brand} />}
                 title="What did you spend?"

@@ -13,10 +13,12 @@ import { Button, Card, Chip, Divider, Money, Row, Screen, SectionTitle, Segmente
 import { firstTxnDate } from '../../src/db';
 import { dayLabel } from '../../src/format';
 import { CURRENCIES } from '../../src/currency';
+import { cycleEndFor, cycleLabel, currentCycle } from '../../src/cycle';
+import { todayLocal } from '../../src/format';
 
 export default function SettingsScreen() {
   const t = useTheme();
-  const { themeMode, setThemeMode, currency, setCurrencyCode } = useSettings();
+  const { themeMode, setThemeMode, currency, setCurrencyCode, cycleStartDay, setCycleStartDay } = useSettings();
   const { reload, version, accounts, defaultAccountId, setDefaultAccount } = useData();
   const [busy, setBusy] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
@@ -131,6 +133,78 @@ export default function SettingsScreen() {
         </Card>
 
         {/* appearance */}
+        <SectionTitle>Your month</SectionTitle>
+        <Card>
+          <Text style={{ color: t.dim, fontSize: 12.5, lineHeight: 18 }}>
+            If your salary lands on a set day, your month probably runs from that day rather than the 1st. Overview,
+            budgets and insights all follow this.
+          </Text>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.lg }}>
+            <Pressable
+              onPress={() => { tap(); setCycleStartDay(cycleStartDay - 1); }}
+              disabled={cycleStartDay <= 1}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: radius.md,
+                backgroundColor: t.sunken,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: cycleStartDay <= 1 ? 0.35 : 1,
+              }}
+            >
+              <Text style={{ color: t.ink, fontSize: 19, fontWeight: '700' }}>–</Text>
+            </Pressable>
+
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={{ color: t.brand, fontSize: 26, fontWeight: '800' }}>
+                {cycleStartDay === 1 ? '1st' : ordinal(cycleStartDay)}
+              </Text>
+              <Text style={{ color: t.faint, fontSize: 11, marginTop: 1 }}>starts on the</Text>
+            </View>
+
+            <Pressable
+              onPress={() => { tap(); setCycleStartDay(cycleStartDay + 1); }}
+              disabled={cycleStartDay >= 31}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: radius.md,
+                backgroundColor: t.sunken,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: cycleStartDay >= 31 ? 0.35 : 1,
+              }}
+            >
+              <Text style={{ color: t.ink, fontSize: 19, fontWeight: '700' }}>+</Text>
+            </Pressable>
+          </View>
+
+          <View
+            style={{
+              marginTop: space.md,
+              backgroundColor: t.brandSoft,
+              borderRadius: radius.md,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+            }}
+          >
+            <Text style={{ color: t.brand, fontSize: 10.5, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+              Right now that means
+            </Text>
+            <Text style={{ color: t.ink, fontSize: 14.5, fontWeight: '700', marginTop: 3 }}>
+              {cycleLabel(currentCycle(todayLocal(), cycleStartDay), cycleStartDay)}
+            </Text>
+          </View>
+
+          {cycleStartDay > 28 && (
+            <Text style={{ color: t.warn, fontSize: 11.5, marginTop: 8, lineHeight: 16 }}>
+              Months shorter than this start on their last day instead — February included.
+            </Text>
+          )}
+        </Card>
+
         <SectionTitle>Appearance</SectionTitle>
         <Card>
           <Text style={{ color: t.dim, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Theme</Text>
@@ -304,6 +378,11 @@ export default function SettingsScreen() {
       </ScrollView>
     </Screen>
   );
+}
+
+function ordinal(n: number) {
+  const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th';
+  return `${n}${suffix}`;
 }
 
 function Meta({ label, value }: { label: string; value: string }) {

@@ -23,24 +23,29 @@ type SettingsState = {
   themeMode: ThemeMode;
   currencyCode: string;
   currency: Currency;
+  cycleStartDay: number;
   hydrated: boolean;
   hydrate: () => void;
   setThemeMode: (m: ThemeMode) => void;
   setCurrencyCode: (code: string) => void;
+  setCycleStartDay: (d: number) => void;
 };
 
 export const useSettings = create<SettingsState>((set) => ({
   themeMode: 'dark',
   currencyCode: DEFAULT_CURRENCY,
   currency: currencyByCode(DEFAULT_CURRENCY),
+  cycleStartDay: 1,
   hydrated: false,
   hydrate: () => {
     const code = getSetting('currencyCode');
     const valid = code && CURRENCIES.some((c) => c.code === code) ? code : DEFAULT_CURRENCY;
+    const day = Number(getSetting('cycleStartDay') ?? 1);
     set({
       themeMode: (getSetting('themeMode') as ThemeMode) ?? 'dark',
       currencyCode: valid,
       currency: currencyByCode(valid),
+      cycleStartDay: Number.isFinite(day) && day >= 1 && day <= 31 ? day : 1,
       hydrated: true,
     });
   },
@@ -51,6 +56,11 @@ export const useSettings = create<SettingsState>((set) => ({
   setCurrencyCode: (code) => {
     setSetting('currencyCode', code);
     set({ currencyCode: code, currency: currencyByCode(code) });
+  },
+  setCycleStartDay: (d) => {
+    const day = Math.min(31, Math.max(1, Math.round(d)));
+    setSetting('cycleStartDay', String(day));
+    set({ cycleStartDay: day });
   },
 }));
 

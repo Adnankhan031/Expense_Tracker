@@ -6,6 +6,7 @@ import { Bars, Donut, GroupedBars, HBar, TrendLine } from '../../src/charts';
 import { RangeStats, rangeStats } from '../../src/analytics';
 import { firstTxnDate } from '../../src/db';
 import { useData, useSettings } from '../../src/store';
+import { cycleEndFor, cycleLabel, currentCycle } from '../../src/cycle';
 import { radius, space, useTheme } from '../../src/theme';
 import { Card, Chip, EmptyState, Money, Screen, SectionTitle, Segmented, tap } from '../../src/ui';
 import { DatePickerSheet } from '../../src/pickers';
@@ -24,7 +25,7 @@ import { CategoryIcon } from '../../src/icons';
 type Period = 'month' | '3m' | '6m' | '12m' | 'all' | 'custom';
 
 const OPTIONS: { value: Period; label: string }[] = [
-  { value: 'month', label: 'Month' },
+  { value: 'month', label: 'Cycle' },
   { value: '3m', label: '3M' },
   { value: '6m', label: '6M' },
   { value: '12m', label: '1Y' },
@@ -35,6 +36,7 @@ const OPTIONS: { value: Period; label: string }[] = [
 export default function AnalyticsScreen() {
   const t = useTheme();
   const dataVersion = useData((s) => s.version);
+  const { cycleStartDay } = useSettings();
   const [period, setPeriod] = useState<Period>('6m');
   // custom window, defaulting to the last 30 days so the pickers open somewhere useful
   const [from, setFrom] = useState(() => addDays(todayLocal(), -29));
@@ -46,7 +48,10 @@ export default function AnalyticsScreen() {
   const bounds = useMemo(() => {
     const cur = currentMonth();
     const today = todayLocal();
-    if (period === 'month') return { from: monthStart(cur), to: monthEnd(cur), label: monthLabel(cur) };
+    if (period === 'month') {
+      const c = currentCycle(todayLocal(), cycleStartDay);
+      return { from: c, to: cycleEndFor(c, cycleStartDay), label: cycleLabel(c, cycleStartDay) };
+    }
     if (period === 'all') {
       const first = firstTxnDate() ?? monthStart(cur);
       return { from: first, to: today, label: 'All time' };
@@ -58,7 +63,7 @@ export default function AnalyticsScreen() {
     }
     const back = period === '3m' ? 2 : period === '6m' ? 5 : 11;
     return { from: monthStart(shiftMonth(cur, -back)), to: monthEnd(cur), label: `Last ${back + 1} months` };
-  }, [period, from, to]);
+  }, [period, from, to, cycleStartDay]);
 
   const load = useCallback(() => {
     setStats(rangeStats(bounds.from, bounds.to, bounds.label));

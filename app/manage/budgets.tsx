@@ -3,6 +3,8 @@ import { ScrollView, Text, TextInput, View } from 'react-native';
 
 import { listBudgets, setBudget, totalsByCategory } from '../../src/db';
 import { useData, useSettings } from '../../src/store';
+import { cycleEndFor, cycleLabel, currentCycle } from '../../src/cycle';
+import { todayLocal } from '../../src/format';
 import { radius, space, useTheme } from '../../src/theme';
 import { Button, Card, IconBadge, Money, Screen, SectionTitle } from '../../src/ui';
 import { HBar } from '../../src/charts';
@@ -11,15 +13,17 @@ import { IconTile } from '../../src/icons';
 
 export default function BudgetsScreen() {
   const t = useTheme();
-  const { currency } = useSettings();
+  const { currency, cycleStartDay } = useSettings();
   const { categories, reload, version } = useData();
   const [values, setValues] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);
 
+  const cycle = currentCycle(todayLocal(), cycleStartDay);
+  const cycleEnd = cycleEndFor(cycle, cycleStartDay);
   const ym = currentMonth();
   const spent = useMemo(
-    () => new Map(totalsByCategory(monthStart(ym), monthEnd(ym), 'expense').map((c) => [c.category_id, c.total])),
-    [ym, version]
+    () => new Map(totalsByCategory(cycle, cycleEnd, 'expense').map((c) => [c.category_id, c.total])),
+    [cycle, cycleEnd, version]
   );
   const totalSpent = useMemo(() => Array.from(spent.values()).reduce((a, b) => a + b, 0), [spent]);
 
@@ -89,7 +93,7 @@ export default function BudgetsScreen() {
         <Card>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600' }}>Everything, {monthLabel(ym, true)}</Text>
+              <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600' }}>Everything, {cycleLabel(cycle, cycleStartDay)}</Text>
               <Text style={{ color: t.faint, fontSize: 11.5, marginTop: 2 }}>
                 Spent so far: {currency.symbol}
                 {(totalSpent / 100).toLocaleString()}

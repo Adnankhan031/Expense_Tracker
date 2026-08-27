@@ -4,13 +4,14 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 
 import { Bars, Donut, HBar, Ring } from '../../src/charts';
-import { MonthStats, buildInsights, monthStats } from '../../src/analytics';
+import { MonthStats, buildInsights, periodStats } from '../../src/analytics';
 import { TxnWithCategory, searchTxns } from '../../src/db';
 import { useData, useSettings } from '../../src/store';
+import { cycleEndFor, cycleLabel, cycleStartingIn, currentCycle, shiftCycle } from '../../src/cycle';
 import { radius, space, useTheme } from '../../src/theme';
 import { Card, EmptyState, IconBadge, Money, Screen, SectionTitle, tap } from '../../src/ui';
 import { MonthPickerSheet } from '../../src/pickers';
-import { currentMonth, formatMoney, monthLabel, shiftMonth, shortDayLabel } from '../../src/format';
+import { currentMonth, formatMoney, monthLabel, shiftMonth, shortDayLabel, todayLocal } from '../../src/format';
 import { TxnEditor } from '../../src/TxnEditor';
 import { CategoryIcon, IconTile } from '../../src/icons';
 
@@ -18,7 +19,12 @@ export default function DashboardScreen() {
   const t = useTheme();
   const { currency } = useSettings();
   const { version, reload } = useData();
-  const [ym, setYm] = useState(currentMonth());
+  const { cycleStartDay } = useSettings();
+  const [cycle, setCycle] = useState(() => currentCycle(todayLocal(), cycleStartDay));
+  const curCycle = currentCycle(todayLocal(), cycleStartDay);
+  const from = cycle;
+  const to = cycleEndFor(cycle, cycleStartDay);
+  const prevCycle = shiftCycle(cycle, -1, cycleStartDay);
   const [stats, setStats] = useState<MonthStats | null>(null);
   const [recent, setRecent] = useState<TxnWithCategory[]>([]);
   const [showMonth, setShowMonth] = useState(false);
@@ -30,10 +36,10 @@ export default function DashboardScreen() {
   );
 
   const load = useCallback(() => {
-    const s = monthStats(ym);
+    const s = periodStats(from, to, prevCycle, cycleEndFor(prevCycle, cycleStartDay));
     setStats(s);
     setRecent(searchTxns({ from: s.from, to: s.to, limit: 6 }));
-  }, [ym]);
+  }, [from, to, prevCycle, cycleStartDay]);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,26 +56,26 @@ export default function DashboardScreen() {
   const insights = buildInsights(stats, fmt);
   const slices = stats.byCategory.slice(0, 8).map((c) => ({ value: c.total, color: c.color, label: c.name }));
   const budgetPct = stats.budgetTotal > 0 ? stats.budgetUsed / stats.budgetTotal : 0;
-  const isCurrent = ym === currentMonth();
+  const isCurrent = cycle === curCycle;
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         {/* month switcher */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.lg }}>
-          <Pressable onPress={() => { tap(); setYm(shiftMonth(ym, -1)); }} hitSlop={14}>
+          <Pressable onPress={() => { tap(); setCycle(shiftCycle(cycle, -1, cycleStartDay)); }} hitSlop={14}>
             <Ionicons name="chevron-back" size={24} color={t.dim} />
           </Pressable>
           <Pressable onPress={() => { tap(); setShowMonth(true); }} style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={{ color: t.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 }}>{monthLabel(ym)}</Text>
+            <Text style={{ color: t.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 }}>{cycleLabel(cycle, cycleStartDay)}</Text>
             <Text style={{ color: t.faint, fontSize: 11, marginTop: 1 }}>
               {stats.count} {stats.count === 1 ? 'entry' : 'entries'}
             </Text>
           </Pressable>
           <Pressable
-            onPress={() => { tap(); if (ym < currentMonth()) setYm(shiftMonth(ym, 1)); }}
+            onPress={() => { tap(); if (cycle < curCycle) setCycle(shiftCycle(cycle, 1, cycleStartDay)); }}
             hitSlop={14}
-            style={{ opacity: ym < currentMonth() ? 1 : 0.25 }}
+            style={{ opacity: cycle < curCycle ? 1 : 0.25 }}
           >
             <Ionicons name="chevron-forward" size={24} color={t.dim} />
           </Pressable>
@@ -79,7 +85,7 @@ export default function DashboardScreen() {
           <Card>
             <EmptyState
               icon="🗓"
-              title={`Nothing logged in ${monthLabel(ym, true)}`}
+              title={`Nothing logged in ${cycleLabel(cycle, cycleStartDay)}`}
               body={
                 isCurrent
                   ? 'Head to the Add tab and type your first expense.'
@@ -111,7 +117,7 @@ export default function DashboardScreen() {
                         color={stats.deltaPct > 0 ? t.down : t.brand}
                       />
                       <Text style={{ color: stats.deltaPct > 0 ? t.down : t.brand, fontSize: 12.5, fontWeight: '700' }}>
-                        {Math.abs(Math.round(stats.deltaPct))}% vs {monthLabel(shiftMonth(ym, -1), true)}
+                        {Math.abs(Math.round(stats.deltaPct))}% vs last period
                       </Text>
                     </View>
                   )}
@@ -158,7 +164,7 @@ export default function DashboardScreen() {
                 {stats.byCategory.slice(0, 8).map((c) => (
                   <Pressable
                     key={c.category_id}
-                    onPress={() => { tap(); router.push({ pathname: '/category/[id]', params: { id: c.category_id, ym } }); }}
+                    onPress={() => { tap(); router.push({ pathname: '/category/[id]', params: { id: c.category_id, from, to } }); }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 5 }}>
                       <CategoryIcon name={c.icon} size={14} color={c.color} />
@@ -242,10 +248,10 @@ export default function DashboardScreen() {
 
       <MonthPickerSheet
         visible={showMonth}
-        value={ym}
+        value={cycle.slice(0, 7)}
         onClose={() => setShowMonth(false)}
         onPick={(m) => {
-          setYm(m);
+          setCycle(cycleStartingIn(m, cycleStartDay));
           setShowMonth(false);
         }}
       />
