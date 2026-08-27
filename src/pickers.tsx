@@ -62,17 +62,17 @@ export function DatePickerSheet({
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.sm }}>
         <Pressable onPress={() => { tap(); setYm(shiftMonth(ym, -1)); }} hitSlop={12}>
-          <Ionicons name="chevron-back" size={22} color={t.textDim} />
+          <Ionicons name="chevron-back" size={22} color={t.dim} />
         </Pressable>
-        <Text style={{ color: t.text, fontWeight: '700', fontSize: 16 }}>{monthLabel(ym)}</Text>
+        <Text style={{ color: t.ink, fontWeight: '700', fontSize: 16 }}>{monthLabel(ym)}</Text>
         <Pressable onPress={() => { tap(); setYm(shiftMonth(ym, 1)); }} hitSlop={12}>
-          <Ionicons name="chevron-forward" size={22} color={t.textDim} />
+          <Ionicons name="chevron-forward" size={22} color={t.dim} />
         </Pressable>
       </View>
 
       <View style={{ flexDirection: 'row' }}>
         {WEEKDAYS_SHORT.map((d) => (
-          <Text key={d} style={{ flex: 1, textAlign: 'center', color: t.textFaint, fontSize: 10.5, fontWeight: '700' }}>
+          <Text key={d} style={{ flex: 1, textAlign: 'center', color: t.faint, fontSize: 10.5, fontWeight: '700' }}>
             {d[0]}
           </Text>
         ))}
@@ -93,13 +93,13 @@ export function DatePickerSheet({
                     borderRadius: radius.md,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: selected ? t.accent : isToday ? t.accentSoft : 'transparent',
+                    backgroundColor: selected ? t.brand : isToday ? t.brandSoft : 'transparent',
                     opacity: future ? 0.35 : 1,
                   }}
                 >
                   <Text
                     style={{
-                      color: selected ? t.onAccent : isToday ? t.accent : t.text,
+                      color: selected ? t.onBrand : isToday ? t.brand : t.ink,
                       fontWeight: selected || isToday ? '800' : '500',
                       fontSize: 14,
                     }}
@@ -142,11 +142,11 @@ export function MonthPickerSheet({
     <Sheet visible={visible} onClose={onClose} title="Pick a month">
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Pressable onPress={() => { tap(); setYear(year - 1); }} hitSlop={12}>
-          <Ionicons name="chevron-back" size={22} color={t.textDim} />
+          <Ionicons name="chevron-back" size={22} color={t.dim} />
         </Pressable>
-        <Text style={{ color: t.text, fontWeight: '800', fontSize: 18 }}>{year}</Text>
+        <Text style={{ color: t.ink, fontWeight: '800', fontSize: 18 }}>{year}</Text>
         <Pressable onPress={() => { tap(); setYear(year + 1); }} hitSlop={12}>
-          <Ionicons name="chevron-forward" size={22} color={t.textDim} />
+          <Ionicons name="chevron-forward" size={22} color={t.dim} />
         </Pressable>
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -162,11 +162,11 @@ export function MonthPickerSheet({
                   paddingVertical: 14,
                   borderRadius: radius.md,
                   alignItems: 'center',
-                  backgroundColor: selected ? t.accent : t.cardAlt,
+                  backgroundColor: selected ? t.brand : t.sunken,
                   opacity: future ? 0.4 : 1,
                 }}
               >
-                <Text style={{ color: selected ? t.onAccent : t.text, fontWeight: '700' }}>{m}</Text>
+                <Text style={{ color: selected ? t.onBrand : t.ink, fontWeight: '700' }}>{m}</Text>
               </Pressable>
             </View>
           );
@@ -207,15 +207,15 @@ export function CategoryPickerSheet({
     <Sheet visible={visible} onClose={onClose} title="Category">
       <TextInput
         placeholder="Search categories"
-        placeholderTextColor={t.textFaint}
+        placeholderTextColor={t.faint}
         value={q}
         onChangeText={setQ}
         style={{
-          backgroundColor: t.cardAlt,
+          backgroundColor: t.sunken,
           borderRadius: radius.md,
           paddingHorizontal: 14,
           paddingVertical: 11,
-          color: t.text,
+          color: t.ink,
           fontSize: 15,
         }}
       />
@@ -224,9 +224,9 @@ export function CategoryPickerSheet({
           onPress={() => { tap(); onPick(null); }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: 10 }}
         >
-          <IconBadge icon="🗂" color={t.textDim} />
-          <Text style={{ color: t.text, fontSize: 15, fontWeight: '600', flex: 1 }}>All categories</Text>
-          {value === null && <Ionicons name="checkmark" size={20} color={t.accent} />}
+          <IconBadge icon="🗂" color={t.dim} />
+          <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600', flex: 1 }}>All categories</Text>
+          {value === null && <Ionicons name="checkmark" size={20} color={t.brand} />}
         </Pressable>
       )}
       {list.map((c) => (
@@ -237,10 +237,10 @@ export function CategoryPickerSheet({
         >
           <IconBadge icon={c.icon} color={c.color} />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: t.text, fontSize: 15, fontWeight: '600' }}>{c.name}</Text>
-            <Text style={{ color: t.textFaint, fontSize: 11 }}>{c.kind === 'income' ? 'Income' : 'Expense'}</Text>
+            <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600' }}>{c.name}</Text>
+            <Text style={{ color: t.faint, fontSize: 11 }}>{c.kind === 'income' ? 'Income' : 'Expense'}</Text>
           </View>
-          {value === c.id && <Ionicons name="checkmark" size={20} color={t.accent} />}
+          {value === c.id && <Ionicons name="checkmark" size={20} color={t.brand} />}
         </Pressable>
       ))}
     </Sheet>
@@ -284,14 +284,14 @@ export function AmountPad({
               style={({ pressed }) => ({
                 paddingVertical: 16,
                 borderRadius: radius.md,
-                backgroundColor: pressed ? t.card : t.cardAlt,
+                backgroundColor: pressed ? t.surface : t.sunken,
                 alignItems: 'center',
               })}
             >
               {k === 'del' ? (
-                <Ionicons name="backspace-outline" size={20} color={t.text} />
+                <Ionicons name="backspace-outline" size={20} color={t.ink} />
               ) : (
-                <Text style={{ color: t.text, fontSize: 20, fontWeight: '600' }}>{k}</Text>
+                <Text style={{ color: t.ink, fontSize: 20, fontWeight: '600' }}>{k}</Text>
               )}
             </Pressable>
           </View>

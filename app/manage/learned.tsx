@@ -9,6 +9,7 @@ import { useData } from '../../src/store';
 import { radius, space, useTheme } from '../../src/theme';
 import { Card, EmptyState, IconBadge, Money, Screen, SectionTitle, tap } from '../../src/ui';
 import { dayLabel, todayLocal } from '../../src/format';
+import { IconTile } from '../../src/icons';
 
 export default function LearnedScreen() {
   const t = useTheme();
@@ -26,7 +27,7 @@ export default function LearnedScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
-        <Text style={{ color: t.textDim, fontSize: 13, lineHeight: 19 }}>
+        <Text style={{ color: t.dim, fontSize: 13, lineHeight: 19 }}>
           Every time you correct a category, the word you typed gets bound to it. That's why the app gets faster the
           longer you use it.
         </Text>
@@ -37,13 +38,13 @@ export default function LearnedScreen() {
             value={probe}
             onChangeText={setProbe}
             placeholder="zomato 480 yest upi"
-            placeholderTextColor={t.textFaint}
+            placeholderTextColor={t.faint}
             style={{
-              backgroundColor: t.cardAlt,
+              backgroundColor: t.sunken,
               borderRadius: radius.md,
               paddingHorizontal: 14,
               paddingVertical: 12,
-              color: t.text,
+              color: t.ink,
               fontSize: 15,
             }}
           />
@@ -52,9 +53,9 @@ export default function LearnedScreen() {
               <Pressable
                 key={s}
                 onPress={() => { tap(); setProbe(s); }}
-                style={{ backgroundColor: t.cardAlt, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill }}
+                style={{ backgroundColor: t.sunken, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill }}
               >
-                <Text style={{ color: t.textDim, fontSize: 11.5 }}>{s}</Text>
+                <Text style={{ color: t.dim, fontSize: 11.5 }}>{s}</Text>
               </Pressable>
             ))}
           </View>
@@ -70,20 +71,20 @@ export default function LearnedScreen() {
                       flexDirection: 'row',
                       alignItems: 'center',
                       gap: 10,
-                      backgroundColor: t.cardAlt,
+                      backgroundColor: t.sunken,
                       borderRadius: radius.md,
                       padding: 10,
                     }}
                   >
-                    <IconBadge icon={cat?.icon ?? '📦'} color={cat?.color ?? t.textDim} size={30} />
+                    <IconTile name={cat?.icon} color={cat?.color ?? '#8a9099'} size={30} />
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: t.text, fontSize: 13.5, fontWeight: '600' }}>{e.categoryName}</Text>
-                      <Text style={{ color: t.textFaint, fontSize: 11, marginTop: 1 }}>
+                      <Text style={{ color: t.ink, fontSize: 13.5, fontWeight: '600' }}>{e.categoryName}</Text>
+                      <Text style={{ color: t.faint, fontSize: 11, marginTop: 1 }}>
                         {dayLabel(e.date)}
                         {e.method ? ` · ${e.method}` : ''} · confidence {Math.round(e.confidence * 100)}%
                       </Text>
                     </View>
-                    <Money minor={e.amountMinor} size={14} color={e.type === 'income' ? t.income : t.text} />
+                    <Money minor={e.amountMinor} size={14} color={e.type === 'income' ? t.up : t.ink} />
                   </View>
                 );
               })}
@@ -91,7 +92,7 @@ export default function LearnedScreen() {
           )}
 
           {parsed?.kind === 'query' && (
-            <Text style={{ color: t.textDim, fontSize: 12.5, marginTop: space.md }}>
+            <Text style={{ color: t.dim, fontSize: 12.5, marginTop: space.md }}>
               Read as a question about {parsed.query.categoryName ?? 'everything'} for {parsed.query.period.label}.
             </Text>
           )}
@@ -122,10 +123,10 @@ export default function LearnedScreen() {
                     borderTopColor: t.line,
                   }}
                 >
-                  <IconBadge icon={cat?.icon ?? '📦'} color={cat?.color ?? t.textDim} size={30} />
+                  <IconTile name={cat?.icon} color={cat?.color ?? '#8a9099'} size={30} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: t.text, fontSize: 14.5, fontWeight: '600' }}>{a.keyword}</Text>
-                    <Text style={{ color: t.textFaint, fontSize: 11.5, marginTop: 1 }}>
+                    <Text style={{ color: t.ink, fontSize: 14.5, fontWeight: '600' }}>{a.keyword}</Text>
+                    <Text style={{ color: t.faint, fontSize: 11.5, marginTop: 1 }}>
                       → {cat?.name ?? a.category_id} · used {a.hits}×
                     </Text>
                   </View>
@@ -138,7 +139,7 @@ export default function LearnedScreen() {
                       reload();
                     }}
                   >
-                    <Ionicons name="close-circle" size={19} color={t.textFaint} />
+                    <Ionicons name="close-circle" size={19} color={t.faint} />
                   </Pressable>
                 </View>
               );

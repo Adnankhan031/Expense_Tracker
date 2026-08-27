@@ -71,7 +71,7 @@ function Shell() {
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: t.bg },
-          headerTintColor: t.text,
+          headerTintColor: t.ink,
           headerTitleStyle: { fontWeight: '700' },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: t.bg },
@@ -79,7 +79,7 @@ function Shell() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="category/[id]" options={{ title: 'Category' }} />
-        <Stack.Screen name="backfill" options={{ title: 'Add past months', presentation: 'modal' }} />
+        <Stack.Screen name="manual" options={{ title: 'Add entries' }} />
         <Stack.Screen name="manage/categories" options={{ title: 'Categories' }} />
         <Stack.Screen name="manage/budgets" options={{ title: 'Budgets' }} />
         <Stack.Screen name="manage/accounts" options={{ title: 'Accounts' }} />

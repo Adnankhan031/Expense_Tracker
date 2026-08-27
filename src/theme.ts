@@ -1,70 +1,77 @@
 import { useColorScheme } from 'react-native';
 import { useSettings } from './store';
 
+/**
+ * Matches web/src/app/globals.css. Warm near-black ground with a gold primary,
+ * and separate semantic hues so a number's direction reads before the number does.
+ */
 export type Theme = {
   dark: boolean;
   bg: string;
-  bgElev: string;
-  card: string;
-  cardAlt: string;
+  surface: string;
+  raised: string;
+  sunken: string;
   line: string;
+  lineSoft: string;
   lineStrong: string;
-  text: string;
-  textDim: string;
-  textFaint: string;
-  accent: string;
-  accentSoft: string;
-  onAccent: string;
-  danger: string;
-  dangerSoft: string;
-  warn: string;
+  ink: string;
+  dim: string;
+  faint: string;
+  brand: string;
+  brandSoft: string;
+  onBrand: string;
+  up: string;
+  upSoft: string;
+  down: string;
+  downSoft: string;
   info: string;
-  income: string;
-  shadow: string;
+  warn: string;
 };
 
 const dark: Theme = {
   dark: true,
-  bg: '#0B0F14',
-  bgElev: '#111721',
-  card: '#151D28',
-  cardAlt: '#1B2634',
-  line: '#232E3D',
-  lineStrong: '#31404F',
-  text: '#EDF3F9',
-  textDim: '#93A2B4',
-  textFaint: '#5E6E80',
-  accent: '#3DDC97',
-  accentSoft: '#12352A',
-  onAccent: '#05130D',
-  danger: '#FF7A7A',
-  dangerSoft: '#3A1C1F',
-  warn: '#FFB454',
-  info: '#63A9FF',
-  income: '#3DDC97',
-  shadow: '#000000',
+  bg: '#0A0B0F',
+  surface: '#13151C',
+  raised: '#1B1E27',
+  sunken: '#0E1015',
+  line: '#232733',
+  lineSoft: '#1A1E28',
+  lineStrong: '#333949',
+  ink: '#F2F4F8',
+  dim: '#969DB0',
+  faint: '#626A7D',
+  brand: '#FFB020',
+  brandSoft: '#2E2208',
+  onBrand: '#1A1200',
+  up: '#2DD4A7',
+  upSoft: '#0D2E26',
+  down: '#FF5C7C',
+  downSoft: '#331420',
+  info: '#5B8DEF',
+  warn: '#FFB020',
 };
 
 const light: Theme = {
   dark: false,
-  bg: '#F4F7F9',
-  bgElev: '#FFFFFF',
-  card: '#FFFFFF',
-  cardAlt: '#EDF1F5',
-  line: '#DFE6ED',
-  lineStrong: '#C6D2DD',
-  text: '#0D1620',
-  textDim: '#586878',
-  textFaint: '#8B9AA9',
-  accent: '#0FA968',
-  accentSoft: '#D9F5E8',
-  onAccent: '#FFFFFF',
-  danger: '#D64545',
-  dangerSoft: '#FBE4E4',
-  warn: '#B27200',
-  info: '#2C74D6',
-  income: '#0FA968',
-  shadow: '#0D1620',
+  bg: '#F6F6F3',
+  surface: '#FFFFFF',
+  raised: '#FFFFFF',
+  sunken: '#EEEEEA',
+  line: '#E3E3DD',
+  lineSoft: '#EDEDEA',
+  lineStrong: '#CDCDC5',
+  ink: '#14161C',
+  dim: '#5B626E',
+  faint: '#8C93A0',
+  brand: '#A86C00',
+  brandSoft: '#FDF0D6',
+  onBrand: '#FFFFFF',
+  up: '#0B9B78',
+  upSoft: '#D8F5EC',
+  down: '#D43A5F',
+  downSoft: '#FCE3E8',
+  info: '#3567CF',
+  warn: '#A86C00',
 };
 
 export function useTheme(): Theme {
@@ -75,20 +82,7 @@ export function useTheme(): Theme {
   return system === 'light' ? light : dark;
 }
 
-export const radius = { sm: 8, md: 14, lg: 20, xl: 28, pill: 999 };
+export const radius = { sm: 8, md: 12, lg: 16, xl: 24, pill: 999 };
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
 
-export const font = {
-  regular: undefined as string | undefined,
-  numeric: {
-    fontVariant: ['tabular-nums'] as const,
-  },
-};
-
-/** 16 distinct, muted-vivid hues that stay legible on both grounds. */
-export const CATEGORY_COLORS = [
-  '#FF8A65', '#4FC3F7', '#FFD54F', '#81C784', '#BA68C8',
-  '#F06292', '#4DB6AC', '#9575CD', '#FFB74D', '#7986CB',
-  '#A1887F', '#90A4AE', '#E57373', '#64B5F6', '#AED581',
-  '#FF7043',
-];
+export { CATEGORY_COLORS } from './colors';

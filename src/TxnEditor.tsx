@@ -15,6 +15,7 @@ import { Button, Chip, IconBadge, Sheet, tap, tapSuccess } from './ui';
 import { CategoryPickerSheet, DatePickerSheet } from './pickers';
 import { radius, space, useTheme } from './theme';
 import { dayLabel, toMinor } from './format';
+import { IconTile } from './icons';
 
 const METHODS = ['Cash', 'UPI', 'Card', 'Bank', 'Wallet'];
 
@@ -131,29 +132,29 @@ export function TxnEditor({
       <Sheet visible={visible} onClose={onClose} title={txnId ? 'Edit entry' : 'New entry'}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Chip label="Expense" active={type === 'expense'} onPress={() => setType('expense')} />
-          <Chip label="Income" active={type === 'income'} color={t.income} onPress={() => setType('income')} />
+          <Chip label="Income" active={type === 'income'} color={t.up} onPress={() => setType('income')} />
         </View>
 
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: t.cardAlt,
+            backgroundColor: t.sunken,
             borderRadius: radius.md,
             paddingHorizontal: 14,
           }}
         >
-          <Text style={{ color: t.textDim, fontSize: 24, fontWeight: '700' }}>{currency}</Text>
+          <Text style={{ color: t.dim, fontSize: 24, fontWeight: '700' }}>{currency.symbol}</Text>
           <TextInput
             value={amount}
             onChangeText={(v) => setAmount(v.replace(/[^0-9.]/g, ''))}
             keyboardType="decimal-pad"
             placeholder="0"
-            placeholderTextColor={t.textFaint}
+            placeholderTextColor={t.faint}
             autoFocus={!txnId}
             style={{
               flex: 1,
-              color: t.text,
+              color: t.ink,
               fontSize: 30,
               fontWeight: '800',
               paddingVertical: 12,
@@ -165,20 +166,20 @@ export function TxnEditor({
 
         <Pressable
           onPress={() => { tap(); setShowCat(true); }}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: t.cardAlt, borderRadius: radius.md, padding: 12 }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: t.sunken, borderRadius: radius.md, padding: 12 }}
         >
-          <IconBadge icon={category?.icon ?? '📦'} color={category?.color ?? t.textDim} size={34} />
-          <Text style={{ color: t.text, fontSize: 15, fontWeight: '600', flex: 1 }}>{category?.name ?? 'Choose category'}</Text>
-          <Ionicons name="chevron-forward" size={18} color={t.textFaint} />
+          <IconTile name={category?.icon} color={category?.color ?? '#8a9099'} size={34} />
+          <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600', flex: 1 }}>{category?.name ?? 'Choose category'}</Text>
+          <Ionicons name="chevron-forward" size={18} color={t.faint} />
         </Pressable>
 
         <Pressable
           onPress={() => { tap(); setShowDate(true); }}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: t.cardAlt, borderRadius: radius.md, padding: 14 }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: t.sunken, borderRadius: radius.md, padding: 14 }}
         >
-          <Ionicons name="calendar-outline" size={20} color={t.textDim} />
-          <Text style={{ color: t.text, fontSize: 15, fontWeight: '600', flex: 1 }}>{dayLabel(date)}</Text>
-          <Ionicons name="chevron-forward" size={18} color={t.textFaint} />
+          <Ionicons name="calendar-outline" size={20} color={t.dim} />
+          <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600', flex: 1 }}>{dayLabel(date)}</Text>
+          <Ionicons name="chevron-forward" size={18} color={t.faint} />
         </Pressable>
 
         <View style={{ flexDirection: 'row', gap: 7, flexWrap: 'wrap' }}>
@@ -206,13 +207,13 @@ export function TxnEditor({
           value={note}
           onChangeText={setNote}
           placeholder="Note (optional)"
-          placeholderTextColor={t.textFaint}
+          placeholderTextColor={t.faint}
           style={{
-            backgroundColor: t.cardAlt,
+            backgroundColor: t.sunken,
             borderRadius: radius.md,
             paddingHorizontal: 14,
             paddingVertical: 13,
-            color: t.text,
+            color: t.ink,
             fontSize: 15,
           }}
         />

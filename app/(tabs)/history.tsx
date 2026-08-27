@@ -22,6 +22,7 @@ import {
   pad2,
   shiftMonth,
 } from '../../src/format';
+import { IconTile } from '../../src/icons';
 
 export default function HistoryScreen() {
   const t = useTheme();
@@ -104,18 +105,18 @@ export default function HistoryScreen() {
             {/* month nav */}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.lg }}>
               <Pressable onPress={() => { tap(); setYm(shiftMonth(ym, -1)); setSelectedDay(null); }} hitSlop={14}>
-                <Ionicons name="chevron-back" size={24} color={t.textDim} />
+                <Ionicons name="chevron-back" size={24} color={t.dim} />
               </Pressable>
               <Pressable onPress={() => { tap(); setShowMonth(true); }} style={{ flex: 1, alignItems: 'center' }}>
-                <Text style={{ color: t.text, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 }}>{monthLabel(ym)}</Text>
-                <Money minor={monthTotal} size={12} weight="600" color={t.textFaint} />
+                <Text style={{ color: t.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 }}>{monthLabel(ym)}</Text>
+                <Money minor={monthTotal} size={12} weight="600" color={t.faint} />
               </Pressable>
               <Pressable
                 onPress={() => { tap(); if (ym < currentMonth()) { setYm(shiftMonth(ym, 1)); setSelectedDay(null); } }}
                 hitSlop={14}
                 style={{ opacity: ym < currentMonth() ? 1 : 0.25 }}
               >
-                <Ionicons name="chevron-forward" size={24} color={t.textDim} />
+                <Ionicons name="chevron-forward" size={24} color={t.dim} />
               </Pressable>
             </View>
 
@@ -123,7 +124,7 @@ export default function HistoryScreen() {
             <Card>
               <View style={{ flexDirection: 'row', marginBottom: 6 }}>
                 {WEEKDAYS_SHORT.map((d) => (
-                  <Text key={d} style={{ flex: 1, textAlign: 'center', color: t.textFaint, fontSize: 10, fontWeight: '700' }}>
+                  <Text key={d} style={{ flex: 1, textAlign: 'center', color: t.faint, fontSize: 10, fontWeight: '700' }}>
                     {d[0]}
                   </Text>
                 ))}
@@ -133,7 +134,7 @@ export default function HistoryScreen() {
                 selected={selectedDay}
                 onPress={(date) => setSelectedDay(selectedDay === date ? null : date)}
               />
-              <Text style={{ color: t.textFaint, fontSize: 11, textAlign: 'center', marginTop: 8 }}>
+              <Text style={{ color: t.faint, fontSize: 11, textAlign: 'center', marginTop: 8 }}>
                 {selectedDay ? `Showing ${dayLabel(selectedDay)} — tap again to clear` : 'Tap a day to filter'}
               </Text>
             </Card>
@@ -146,22 +147,22 @@ export default function HistoryScreen() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 7,
-                  backgroundColor: t.cardAlt,
+                  backgroundColor: t.sunken,
                   borderRadius: radius.md,
                   paddingHorizontal: 12,
                 }}
               >
-                <Ionicons name="search" size={15} color={t.textFaint} />
+                <Ionicons name="search" size={15} color={t.faint} />
                 <TextInput
                   value={q}
                   onChangeText={setQ}
                   placeholder="Search notes"
-                  placeholderTextColor={t.textFaint}
-                  style={{ flex: 1, color: t.text, fontSize: 14, paddingVertical: 10 }}
+                  placeholderTextColor={t.faint}
+                  style={{ flex: 1, color: t.ink, fontSize: 14, paddingVertical: 10 }}
                 />
                 {!!q && (
                   <Pressable onPress={() => setQ('')} hitSlop={8}>
-                    <Ionicons name="close-circle" size={16} color={t.textFaint} />
+                    <Ionicons name="close-circle" size={16} color={t.faint} />
                   </Pressable>
                 )}
               </View>
@@ -175,7 +176,7 @@ export default function HistoryScreen() {
             </View>
 
             {rows.length > 0 && (
-              <Text style={{ color: t.textFaint, fontSize: 11.5, marginTop: space.md }}>
+              <Text style={{ color: t.faint, fontSize: 11.5, marginTop: space.md }}>
                 {rows.length} {rows.length === 1 ? 'entry' : 'entries'}
               </Text>
             )}
@@ -190,8 +191,8 @@ export default function HistoryScreen() {
               paddingVertical: 7,
             }}
           >
-            <Text style={{ color: t.textDim, fontSize: 12, fontWeight: '700', flex: 1 }}>{dayLabel(section.title)}</Text>
-            <Money minor={section.total} size={12} weight="700" color={t.textFaint} />
+            <Text style={{ color: t.dim, fontSize: 12, fontWeight: '700', flex: 1 }}>{dayLabel(section.title)}</Text>
+            <Money minor={section.total} size={12} weight="700" color={t.faint} />
           </View>
         )}
         renderItem={({ item }) => (
@@ -207,19 +208,19 @@ export default function HistoryScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               gap: space.md,
-              backgroundColor: t.card,
+              backgroundColor: t.surface,
               borderRadius: radius.md,
               padding: 12,
               marginBottom: 7,
               opacity: pressed ? 0.75 : 1,
             })}
           >
-            <IconBadge icon={item.cat_icon} color={item.cat_color} size={36} />
+            <IconTile name={item.cat_icon} color={item.cat_color} size={36} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: t.text, fontSize: 14.5, fontWeight: '600' }} numberOfLines={1}>
+              <Text style={{ color: t.ink, fontSize: 14.5, fontWeight: '600' }} numberOfLines={1}>
                 {item.note || item.cat_name}
               </Text>
-              <Text style={{ color: t.textFaint, fontSize: 11.5, marginTop: 1 }}>
+              <Text style={{ color: t.faint, fontSize: 11.5, marginTop: 1 }}>
                 {item.cat_name}
                 {item.method ? ` · ${item.method}` : ''}
                 {item.source === 'backfill' ? ' · backfilled' : ''}
@@ -228,7 +229,7 @@ export default function HistoryScreen() {
             <Money
               minor={item.amount_minor}
               size={15}
-              color={item.type === 'income' ? t.income : t.text}
+              color={item.type === 'income' ? t.up : t.ink}
               prefix={item.type === 'income' ? '+' : ''}
             />
           </Pressable>

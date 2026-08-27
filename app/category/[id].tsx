@@ -17,6 +17,7 @@ import {
   monthStart,
   shiftMonth,
 } from '../../src/format';
+import { IconTile } from '../../src/icons';
 
 type Span = '1m' | '6m' | '12m';
 
@@ -90,16 +91,16 @@ export default function CategoryDetail() {
       <Stack.Screen options={{ title: category.name }} />
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.lg }}>
-          <IconBadge icon={category.icon} color={category.color} size={52} />
+          <IconTile name={category.icon} color={category.color} size={52} />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: t.text, fontSize: 22, fontWeight: '800', letterSpacing: -0.5 }}>{category.name}</Text>
-            <Text style={{ color: t.textDim, fontSize: 12.5 }}>
+            <Text style={{ color: t.ink, fontSize: 22, fontWeight: '800', letterSpacing: -0.5 }}>{category.name}</Text>
+            <Text style={{ color: t.dim, fontSize: 12.5 }}>
               {rows.length} entries · {range.label}
             </Text>
           </View>
           {budget > 0 && (
             <Ring progress={currentMonthSpend / budget} size={62} thickness={7}>
-              <Text style={{ color: t.text, fontWeight: '800', fontSize: 12 }}>
+              <Text style={{ color: t.ink, fontWeight: '800', fontSize: 12 }}>
                 {Math.round((currentMonthSpend / budget) * 100)}%
               </Text>
             </Ring>
@@ -139,16 +140,16 @@ export default function CategoryDetail() {
             <SectionTitle>Budget</SectionTitle>
             <Card>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <Text style={{ color: t.textDim, fontSize: 13, flex: 1 }}>
+                <Text style={{ color: t.dim, fontSize: 13, flex: 1 }}>
                   {monthLabel(currentMonth(), true)} so far
                 </Text>
                 <Money minor={currentMonthSpend} size={14} weight="700" />
-                <Text style={{ color: t.textFaint, fontSize: 13 }}> / </Text>
-                <Money minor={budget} size={14} weight="700" color={t.textFaint} />
+                <Text style={{ color: t.faint, fontSize: 13 }}> / </Text>
+                <Money minor={budget} size={14} weight="700" color={t.faint} />
               </View>
               <HBar
                 fraction={currentMonthSpend / budget}
-                color={currentMonthSpend >= budget ? t.danger : currentMonthSpend >= budget * 0.8 ? t.warn : category.color}
+                color={currentMonthSpend >= budget ? t.down : currentMonthSpend >= budget * 0.8 ? t.warn : category.color}
                 height={9}
               />
             </Card>
@@ -175,10 +176,10 @@ export default function CategoryDetail() {
                 }}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: t.text, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
+                  <Text style={{ color: t.ink, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
                     {x.note || category.name}
                   </Text>
-                  <Text style={{ color: t.textFaint, fontSize: 11.5, marginTop: 1 }}>
+                  <Text style={{ color: t.faint, fontSize: 11.5, marginTop: 1 }}>
                     {dayLabel(x.local_date)}
                     {x.method ? ` · ${x.method}` : ''}
                   </Text>
@@ -206,8 +207,8 @@ export default function CategoryDetail() {
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   const t = useTheme();
   return (
-    <View style={{ flex: 1, backgroundColor: t.card, borderRadius: radius.md, padding: 13 }}>
-      <Text style={{ color: t.textFaint, fontSize: 10.5, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+    <View style={{ flex: 1, backgroundColor: t.surface, borderRadius: radius.md, padding: 13 }}>
+      <Text style={{ color: t.faint, fontSize: 10.5, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>
         {label}
       </Text>
       <View style={{ marginTop: 4 }}>{value}</View>

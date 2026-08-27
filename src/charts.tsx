@@ -30,7 +30,7 @@ export function Donut({
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
         <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
-          <Circle cx={size / 2} cy={size / 2} r={r} stroke={t.cardAlt} strokeWidth={thickness} fill="none" />
+          <Circle cx={size / 2} cy={size / 2} r={r} stroke={t.sunken} strokeWidth={thickness} fill="none" />
           {total > 0 &&
             data.map((d, i) => {
               const frac = d.value / total;
@@ -82,12 +82,12 @@ export function Ring({
   const p = Math.max(0, Math.min(1, progress));
   const r = (size - thickness) / 2;
   const c = 2 * Math.PI * r;
-  const stroke = color ?? (p >= 1 ? t.danger : p >= 0.8 ? t.warn : t.accent);
+  const stroke = color ?? (p >= 1 ? t.down : p >= 0.8 ? t.warn : t.brand);
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
         <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
-          <Circle cx={size / 2} cy={size / 2} r={r} stroke={track ?? t.cardAlt} strokeWidth={thickness} fill="none" />
+          <Circle cx={size / 2} cy={size / 2} r={r} stroke={track ?? t.sunken} strokeWidth={thickness} fill="none" />
           <Circle
             cx={size / 2}
             cy={size / 2}
@@ -126,7 +126,7 @@ export function Bars({
 }) {
   const t = useTheme();
   const max = Math.max(1, ...data.map((d) => d.value));
-  const accent = color ?? t.accent;
+  const accent = color ?? t.brand;
   return (
     <View>
       <View style={{ height, flexDirection: 'row', alignItems: 'flex-end', gap: data.length > 20 ? 2 : 4 }}>
@@ -152,7 +152,7 @@ export function Bars({
             <View key={i} style={{ flex: 1, alignItems: 'center' }}>
               <Text
                 numberOfLines={1}
-                style={{ color: d.highlight ? t.text : t.textFaint, fontSize: 9, fontWeight: d.highlight ? '700' : '500' }}
+                style={{ color: d.highlight ? t.ink : t.faint, fontSize: 9, fontWeight: d.highlight ? '700' : '500' }}
               >
                 {i % labelEvery === 0 ? d.label : ''}
               </Text>
@@ -181,7 +181,7 @@ export function TrendLine({
 }) {
   const t = useTheme();
   const [w, setW] = React.useState(0);
-  const accent = color ?? t.accent;
+  const accent = color ?? t.brand;
   const max = Math.max(1, ...values);
   const min = 0;
   const pad = 6;
@@ -229,7 +229,7 @@ export function TrendLine({
         <View style={{ flexDirection: 'row', marginTop: 4 }}>
           {labels.map((l, i) => (
             <View key={i} style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={{ color: t.textFaint, fontSize: 9.5 }}>{l}</Text>
+              <Text style={{ color: t.faint, fontSize: 9.5 }}>{l}</Text>
             </View>
           ))}
         </View>
@@ -260,7 +260,7 @@ export function GroupedBars({
               style={{
                 flex: 1,
                 height: Math.max(2, (d.expense / max) * height),
-                backgroundColor: t.danger,
+                backgroundColor: t.down,
                 opacity: 0.85,
                 borderRadius: 3,
               }}
@@ -269,7 +269,7 @@ export function GroupedBars({
               style={{
                 flex: 1,
                 height: Math.max(2, (d.income / max) * height),
-                backgroundColor: t.income,
+                backgroundColor: t.up,
                 opacity: 0.85,
                 borderRadius: 3,
               }}
@@ -280,7 +280,7 @@ export function GroupedBars({
       <View style={{ flexDirection: 'row', marginTop: 6, gap: 8 }}>
         {data.map((d, i) => (
           <View key={i} style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={{ color: t.textFaint, fontSize: 9.5 }}>{d.label}</Text>
+            <Text style={{ color: t.faint, fontSize: 9.5 }}>{d.label}</Text>
           </View>
         ))}
       </View>
@@ -295,7 +295,7 @@ export function GroupedBars({
 export function HBar({ fraction, color, height = 7 }: { fraction: number; color: string; height?: number }) {
   const t = useTheme();
   return (
-    <View style={{ height, backgroundColor: t.cardAlt, borderRadius: height / 2, overflow: 'hidden' }}>
+    <View style={{ height, backgroundColor: t.sunken, borderRadius: height / 2, overflow: 'hidden' }}>
       <View
         style={{
           width: `${Math.max(2, Math.min(100, fraction * 100))}%`,
@@ -336,19 +336,19 @@ export function HeatGrid({
               style={{
                 flex: 1,
                 borderRadius: radius.sm,
-                backgroundColor: c.muted ? 'transparent' : intensity > 0 ? t.accent : t.cardAlt,
+                backgroundColor: c.muted ? 'transparent' : intensity > 0 ? t.brand : t.sunken,
                 opacity: c.muted ? 0.25 : intensity > 0 ? intensity : 1,
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderWidth: isSel ? 2 : 0,
-                borderColor: t.text,
+                borderColor: t.ink,
               }}
             >
               <Text
                 style={{
                   fontSize: 11,
                   fontWeight: '700',
-                  color: intensity > 0.55 ? t.onAccent : c.muted ? t.textFaint : t.textDim,
+                  color: intensity > 0.55 ? t.onBrand : c.muted ? t.faint : t.dim,
                 }}
               >
                 {c.day || ''}
@@ -363,7 +363,7 @@ export function HeatGrid({
 
 export function Sparkline({ values, width = 62, height = 24, color }: { values: number[]; width?: number; height?: number; color?: string }) {
   const t = useTheme();
-  const accent = color ?? t.accent;
+  const accent = color ?? t.brand;
   const max = Math.max(1, ...values);
   if (!values.length) return <View style={{ width, height }} />;
   const step = values.length > 1 ? width / (values.length - 1) : width;

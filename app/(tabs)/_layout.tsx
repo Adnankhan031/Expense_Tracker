@@ -10,10 +10,10 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: t.accent,
-        tabBarInactiveTintColor: t.textFaint,
+        tabBarActiveTintColor: t.brand,
+        tabBarInactiveTintColor: t.faint,
         tabBarStyle: {
-          backgroundColor: t.bgElev,
+          backgroundColor: t.raised,
           borderTopColor: t.line,
           borderTopWidth: StyleSheet.hairlineWidth,
           height: Platform.OS === 'ios' ? 84 : 62,

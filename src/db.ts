@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { SEED_ACCOUNTS, SEED_CATEGORIES } from './seed';
+import { ICON_MAP, resolveIconName } from './icons';
 
 export const db = SQLite.openDatabaseSync('spendly.db');
 
@@ -75,7 +76,7 @@ export function initDb() {
       CREATE TABLE IF NOT EXISTS categories (
         id TEXT PRIMARY KEY NOT NULL,
         name TEXT NOT NULL,
-        icon TEXT NOT NULL DEFAULT '📦',
+        icon TEXT NOT NULL DEFAULT 'package',
         color TEXT NOT NULL DEFAULT '#90A4AE',
         kind TEXT NOT NULL DEFAULT 'expense',
         keywords TEXT NOT NULL DEFAULT '',
@@ -86,7 +87,7 @@ export function initDb() {
         id TEXT PRIMARY KEY NOT NULL,
         name TEXT NOT NULL,
         kind TEXT NOT NULL DEFAULT 'cash',
-        icon TEXT NOT NULL DEFAULT '💵',
+        icon TEXT NOT NULL DEFAULT 'wallet',
         sort INTEGER NOT NULL DEFAULT 0,
         archived INTEGER NOT NULL DEFAULT 0
       );
@@ -140,6 +141,24 @@ export function initDb() {
   }
 
   seedIfEmpty();
+  migrateIcons();
+}
+
+/**
+ * Categories seeded before the icon set existed store an emoji in `icon`.
+ * Rewrite those rows once so the UI never has to render emoji.
+ */
+function migrateIcons() {
+  const rows = db.getAllSync<{ id: string; icon: string }>('SELECT id, icon FROM categories');
+  for (const r of rows) {
+    if (ICON_MAP[r.icon]) continue;
+    db.runSync('UPDATE categories SET icon=? WHERE id=?', [resolveIconName(r.icon), r.id]);
+  }
+  const accs = db.getAllSync<{ id: string; icon: string }>('SELECT id, icon FROM accounts');
+  for (const a of accs) {
+    if (ICON_MAP[a.icon]) continue;
+    db.runSync('UPDATE accounts SET icon=? WHERE id=?', [resolveIconName(a.icon), a.id]);
+  }
 }
 
 function seedIfEmpty() {
@@ -182,7 +201,7 @@ export function saveCategory(c: Partial<Category> & { name: string }) {
   if (c.id) {
     db.runSync('UPDATE categories SET name=?, icon=?, color=?, kind=?, keywords=? WHERE id=?', [
       c.name,
-      c.icon ?? '📦',
+      c.icon ?? 'package',
       c.color ?? '#90A4AE',
       c.kind ?? 'expense',
       c.keywords ?? '',
@@ -195,7 +214,7 @@ export function saveCategory(c: Partial<Category> & { name: string }) {
   db.runSync('INSERT INTO categories (id,name,icon,color,kind,keywords,sort,archived) VALUES (?,?,?,?,?,?,?,0)', [
     id,
     c.name,
-    c.icon ?? '📦',
+    c.icon ?? 'package',
     c.color ?? '#90A4AE',
     c.kind ?? 'expense',
     c.keywords ?? '',
@@ -212,7 +231,7 @@ export const listAccounts = (): Account[] =>
 
 export function saveAccount(a: Partial<Account> & { name: string }) {
   if (a.id) {
-    db.runSync('UPDATE accounts SET name=?, kind=?, icon=? WHERE id=?', [a.name, a.kind ?? 'cash', a.icon ?? '💵', a.id]);
+    db.runSync('UPDATE accounts SET name=?, kind=?, icon=? WHERE id=?', [a.name, a.kind ?? 'cash', a.icon ?? 'wallet', a.id]);
     return a.id;
   }
   const id = uid();
@@ -221,7 +240,7 @@ export function saveAccount(a: Partial<Account> & { name: string }) {
     id,
     a.name,
     a.kind ?? 'cash',
-    a.icon ?? '💵',
+    a.icon ?? 'wallet',
     (max?.m ?? 0) + 1,
   ]);
   return id;

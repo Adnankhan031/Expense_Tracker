@@ -17,6 +17,7 @@ import {
   shiftMonth,
   todayLocal,
 } from '../../src/format';
+import { CategoryIcon } from '../../src/icons';
 
 type Period = 'month' | '3m' | '6m' | '12m' | 'all';
 
@@ -85,10 +86,10 @@ export default function AnalyticsScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-        <Text style={{ color: t.text, fontSize: 28, fontWeight: '800', letterSpacing: -0.8, marginBottom: 4 }}>
+        <Text style={{ color: t.ink, fontSize: 28, fontWeight: '800', letterSpacing: -0.8, marginBottom: 4 }}>
           Analytics
         </Text>
-        <Text style={{ color: t.textDim, fontSize: 13, marginBottom: space.lg }}>{stats.label}</Text>
+        <Text style={{ color: t.dim, fontSize: 13, marginBottom: space.lg }}>{stats.label}</Text>
 
         <Segmented options={OPTIONS} value={period} onChange={setPeriod} />
 
@@ -101,14 +102,14 @@ export default function AnalyticsScreen() {
             {/* headline numbers */}
             <View style={{ flexDirection: 'row', gap: space.md, marginTop: space.lg }}>
               <BigStat label="Spent" value={<Money minor={stats.expense} size={22} />} />
-              <BigStat label="Earned" value={<Money minor={stats.income} size={22} color={t.income} />} />
+              <BigStat label="Earned" value={<Money minor={stats.income} size={22} color={t.up} />} />
             </View>
             <View style={{ flexDirection: 'row', gap: space.md, marginTop: space.md }}>
               <BigStat label="Per day" value={<Money minor={Math.round(stats.avgPerDay)} size={19} />} />
               <BigStat label="Per month" value={<Money minor={Math.round(stats.avgPerMonth)} size={19} />} />
               <BigStat
                 label="Entries"
-                value={<Text style={{ color: t.text, fontSize: 19, fontWeight: '700' }}>{stats.count}</Text>}
+                value={<Text style={{ color: t.ink, fontSize: 19, fontWeight: '700' }}>{stats.count}</Text>}
               />
             </View>
 
@@ -125,14 +126,14 @@ export default function AnalyticsScreen() {
                 <Bars data={monthBars} height={120} />
               )}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: space.md }}>
-                <Text style={{ color: t.textFaint, fontSize: 11.5 }}>
+                <Text style={{ color: t.faint, fontSize: 11.5 }}>
                   Highest: {monthLabel(stats.months.reduce((a, b) => (b.expense > a.expense ? b : a), stats.months[0]).ym, true)}
                 </Text>
                 <Money
                   minor={Math.max(0, ...stats.months.map((m) => m.expense))}
                   size={11.5}
                   weight="700"
-                  color={t.textFaint}
+                  color={t.faint}
                   compact
                 />
               </View>
@@ -143,16 +144,16 @@ export default function AnalyticsScreen() {
             <Card>
               <GroupedBars data={stats.months.map((m) => ({ label: m.label, expense: m.expense, income: m.income }))} height={130} />
               <View style={{ flexDirection: 'row', gap: space.lg, marginTop: space.md }}>
-                <Legend color={t.danger} label="Spent" />
-                <Legend color={t.income} label="Earned" />
+                <Legend color={t.down} label="Spent" />
+                <Legend color={t.up} label="Earned" />
                 <View style={{ flex: 1 }} />
-                <Text style={{ color: stats.income - stats.expense >= 0 ? t.income : t.danger, fontSize: 12, fontWeight: '700' }}>
+                <Text style={{ color: stats.income - stats.expense >= 0 ? t.up : t.down, fontSize: 12, fontWeight: '700' }}>
                   {stats.income - stats.expense >= 0 ? 'Saved ' : 'Short by '}
                 </Text>
                 <Money
                   minor={Math.abs(stats.income - stats.expense)}
                   size={12}
-                  color={stats.income - stats.expense >= 0 ? t.income : t.danger}
+                  color={stats.income - stats.expense >= 0 ? t.up : t.down}
                   compact
                 />
               </View>
@@ -168,7 +169,7 @@ export default function AnalyticsScreen() {
                   thickness={19}
                 >
                   <Money minor={stats.expense} size={18} compact />
-                  <Text style={{ color: t.textFaint, fontSize: 10 }}>total</Text>
+                  <Text style={{ color: t.faint, fontSize: 10 }}>total</Text>
                 </Donut>
               </View>
               <View style={{ gap: 14 }}>
@@ -181,12 +182,12 @@ export default function AnalyticsScreen() {
                       onPress={() => { tap(); router.push({ pathname: '/category/[id]', params: { id: c.category_id } }); }}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 5 }}>
-                        <Text style={{ fontSize: 13 }}>{c.icon}</Text>
-                        <Text style={{ color: t.text, fontSize: 13.5, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+                        <CategoryIcon name={c.icon} size={14} color={c.color} />
+                        <Text style={{ color: t.ink, fontSize: 13.5, fontWeight: '600', flex: 1 }} numberOfLines={1}>
                           {c.name}
                         </Text>
                         {delta !== null && Math.abs(delta) >= 5 && (
-                          <Text style={{ color: delta > 0 ? t.danger : t.accent, fontSize: 11, fontWeight: '700' }}>
+                          <Text style={{ color: delta > 0 ? t.down : t.brand, fontSize: 11, fontWeight: '700' }}>
                             {delta > 0 ? '+' : ''}
                             {Math.round(delta)}%
                           </Text>
@@ -194,7 +195,7 @@ export default function AnalyticsScreen() {
                         <Money minor={c.total} size={13.5} weight="700" />
                       </View>
                       <HBar fraction={c.total / (stats.byCategory[0]?.total || 1)} color={c.color} />
-                      <Text style={{ color: t.textFaint, fontSize: 10.5, marginTop: 4 }}>
+                      <Text style={{ color: t.faint, fontSize: 10.5, marginTop: 4 }}>
                         {c.count} entries · {Math.round((c.total / stats.expense) * 100)}% of spending
                       </Text>
                     </Pressable>
@@ -214,7 +215,7 @@ export default function AnalyticsScreen() {
                 }))}
                 height={96}
               />
-              <Text style={{ color: t.textDim, fontSize: 12.5, marginTop: space.md }}>
+              <Text style={{ color: t.dim, fontSize: 12.5, marginTop: space.md }}>
                 {busiestDay ? `${busiestDay.label === 'S' ? 'Weekends' : 'Your heaviest day'} aside, ` : ''}you spend most on
                 the highlighted day.
               </Text>
@@ -229,8 +230,8 @@ export default function AnalyticsScreen() {
                     {stats.methods.map((m) => (
                       <View key={m.method}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-                          <Text style={{ color: t.text, fontSize: 13.5, fontWeight: '600', flex: 1 }}>{m.method}</Text>
-                          <Text style={{ color: t.textFaint, fontSize: 11, marginRight: 8 }}>{m.count}×</Text>
+                          <Text style={{ color: t.ink, fontSize: 13.5, fontWeight: '600', flex: 1 }}>{m.method}</Text>
+                          <Text style={{ color: t.faint, fontSize: 11, marginRight: 8 }}>{m.count}×</Text>
                           <Money minor={m.total} size={13} weight="700" />
                         </View>
                         <HBar fraction={m.total / (stats.methods[0]?.total || 1)} color={t.info} />
@@ -278,19 +279,19 @@ export default function AnalyticsScreen() {
                   <View style={{ gap: 11 }}>
                     {stats.merchants.map((m) => (
                       <View key={m.note} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{ color: t.text, fontSize: 13.5, flex: 1, textTransform: 'capitalize' }} numberOfLines={1}>
+                        <Text style={{ color: t.ink, fontSize: 13.5, flex: 1, textTransform: 'capitalize' }} numberOfLines={1}>
                           {m.note}
                         </Text>
                         <View
                           style={{
-                            backgroundColor: t.cardAlt,
+                            backgroundColor: t.sunken,
                             paddingHorizontal: 7,
                             paddingVertical: 2,
                             borderRadius: radius.pill,
                             marginRight: 8,
                           }}
                         >
-                          <Text style={{ color: t.textDim, fontSize: 10.5, fontWeight: '700' }}>{m.count}×</Text>
+                          <Text style={{ color: t.dim, fontSize: 10.5, fontWeight: '700' }}>{m.count}×</Text>
                         </View>
                         <Money minor={m.total} size={13} weight="700" />
                       </View>
@@ -309,8 +310,8 @@ export default function AnalyticsScreen() {
 function BigStat({ label, value }: { label: string; value: React.ReactNode }) {
   const t = useTheme();
   return (
-    <View style={{ flex: 1, backgroundColor: t.card, borderRadius: radius.md, padding: 13 }}>
-      <Text style={{ color: t.textFaint, fontSize: 10.5, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+    <View style={{ flex: 1, backgroundColor: t.surface, borderRadius: radius.md, padding: 13 }}>
+      <Text style={{ color: t.faint, fontSize: 10.5, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>
         {label}
       </Text>
       <View style={{ marginTop: 4 }}>{value}</View>
@@ -323,7 +324,7 @@ function Legend({ color, label }: { color: string; label: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
       <View style={{ width: 9, height: 9, borderRadius: 2.5, backgroundColor: color }} />
-      <Text style={{ color: t.textDim, fontSize: 11.5 }}>{label}</Text>
+      <Text style={{ color: t.dim, fontSize: 11.5 }}>{label}</Text>
     </View>
   );
 }
@@ -332,10 +333,10 @@ function RecordRow({ icon, title, sub, value }: { icon: string; title: string; s
   const t = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
-      <Text style={{ fontSize: 17 }}>{icon}</Text>
+      
       <View style={{ flex: 1 }}>
-        <Text style={{ color: t.text, fontSize: 13.5, fontWeight: '600' }}>{title}</Text>
-        <Text style={{ color: t.textFaint, fontSize: 11.5, marginTop: 1 }} numberOfLines={1}>
+        <Text style={{ color: t.ink, fontSize: 13.5, fontWeight: '600' }}>{title}</Text>
+        <Text style={{ color: t.faint, fontSize: 11.5, marginTop: 1 }} numberOfLines={1}>
           {sub}
         </Text>
       </View>

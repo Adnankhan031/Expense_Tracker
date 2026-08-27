@@ -33,12 +33,13 @@ import { Chip, EmptyState, Money, Screen, tap, tapSuccess } from '../../src/ui';
 import { DatePickerSheet } from '../../src/pickers';
 import { TxnEditor } from '../../src/TxnEditor';
 import { dayLabel, formatMoney, shortDayLabel, todayLocal } from '../../src/format';
+import { IconTile } from '../../src/icons';
 
 const HINTS = ['food 300', 'groceries 2400 and auto 80', 'petrol 1500 on 5th', 'salary 45000 received'];
 
 export default function ChatScreen() {
   const t = useTheme();
-  const { currency, numberStyle } = useSettings();
+  const { currency } = useSettings();
   const { categories, aliases, pinnedDate, setPinnedDate, reload, version, defaultAccountId } = useData();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -51,8 +52,8 @@ export default function ChatScreen() {
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   const fmt = useCallback(
-    (m: number) => formatMoney(m, { symbol: currency, style: numberStyle }),
-    [currency, numberStyle]
+    (m: number) => formatMoney(m, { symbol: currency.symbol, style: currency.grouping, digits: currency.digits }),
+    [currency]
   );
 
   const refresh = useCallback(() => {
@@ -144,8 +145,8 @@ export default function ChatScreen() {
     if (item.role === 'user') {
       return (
         <View style={{ alignSelf: 'flex-end', maxWidth: '84%', marginBottom: 8 }}>
-          <View style={{ backgroundColor: t.accent, borderRadius: 18, borderBottomRightRadius: 5, paddingHorizontal: 14, paddingVertical: 9 }}>
-            <Text style={{ color: t.onAccent, fontSize: 15, fontWeight: '600' }}>{item.text}</Text>
+          <View style={{ backgroundColor: t.brand, borderRadius: 18, borderBottomRightRadius: 5, paddingHorizontal: 14, paddingVertical: 9 }}>
+            <Text style={{ color: t.onBrand, fontSize: 15, fontWeight: '600' }}>{item.text}</Text>
           </View>
         </View>
       );
@@ -167,30 +168,30 @@ export default function ChatScreen() {
         >
           <View
             style={{
-              backgroundColor: t.card,
+              backgroundColor: t.surface,
               borderRadius: 16,
               borderBottomLeftRadius: 5,
               borderWidth: StyleSheet.hairlineWidth,
               borderColor: t.line,
               borderLeftWidth: 3,
-              borderLeftColor: tx.cat_color ?? t.accent,
+              borderLeftColor: tx.cat_color ?? t.brand,
               padding: 12,
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 17 }}>{tx.cat_icon}</Text>
+              <IconTile name={tx.cat_icon} color={tx.cat_color} size={32} />
               <View style={{ flex: 1 }}>
-                <Text style={{ color: t.text, fontSize: 14.5, fontWeight: '700' }}>{tx.cat_name}</Text>
-                {!!tx.note && <Text style={{ color: t.textDim, fontSize: 12, marginTop: 1 }} numberOfLines={1}>{tx.note}</Text>}
+                <Text style={{ color: t.ink, fontSize: 14.5, fontWeight: '700' }}>{tx.cat_name}</Text>
+                {!!tx.note && <Text style={{ color: t.dim, fontSize: 12, marginTop: 1 }} numberOfLines={1}>{tx.note}</Text>}
               </View>
               <Money
                 minor={tx.amount_minor}
                 size={17}
-                color={tx.type === 'income' ? t.income : t.text}
+                color={tx.type === 'income' ? t.up : t.ink}
                 prefix={tx.type === 'income' ? '+' : ''}
               />
               <Pressable onPress={() => removeTxn(item)} hitSlop={10} style={{ paddingLeft: 4 }}>
-                <Ionicons name="close" size={16} color={t.textFaint} />
+                <Ionicons name="close" size={16} color={t.faint} />
               </Pressable>
             </View>
             <View style={{ flexDirection: 'row', gap: 5, marginTop: 9, flexWrap: 'wrap' }}>
@@ -218,7 +219,7 @@ export default function ChatScreen() {
             alignSelf: 'flex-start',
             width: '92%',
             marginBottom: 8,
-            backgroundColor: t.card,
+            backgroundColor: t.surface,
             borderRadius: 16,
             borderBottomLeftRadius: 5,
             borderWidth: StyleSheet.hairlineWidth,
@@ -226,13 +227,13 @@ export default function ChatScreen() {
             padding: 14,
           }}
         >
-          <Text style={{ color: t.textDim, fontSize: 11.5, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+          <Text style={{ color: t.dim, fontSize: 11.5, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }}>
             {a.headline}
           </Text>
-          <Text style={{ color: t.text, fontSize: 30, fontWeight: '800', letterSpacing: -1, marginTop: 4, fontVariant: ['tabular-nums'] }}>
+          <Text style={{ color: t.ink, fontSize: 30, fontWeight: '800', letterSpacing: -1, marginTop: 4, fontVariant: ['tabular-nums'] }}>
             {a.value}
           </Text>
-          <Text style={{ color: t.textDim, fontSize: 13, marginTop: 3, lineHeight: 18 }}>{a.detail}</Text>
+          <Text style={{ color: t.dim, fontSize: 13, marginTop: 3, lineHeight: 18 }}>{a.detail}</Text>
           {a.bars.length > 1 && (
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 38, marginTop: 12 }}>
               {a.bars.map((b, i) => (
@@ -241,7 +242,7 @@ export default function ChatScreen() {
                   style={{
                     flex: 1,
                     height: Math.max(2, (b.value / max) * 38),
-                    backgroundColor: t.accent,
+                    backgroundColor: t.brand,
                     opacity: b.value === 0 ? 0.15 : b.highlight ? 1 : 0.5,
                     borderRadius: 2,
                   }}
@@ -254,8 +255,8 @@ export default function ChatScreen() {
               {a.breakdown.map((b, i) => (
                 <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: b.color }} />
-                  <Text style={{ color: t.textDim, fontSize: 12.5, flex: 1 }}>{b.name}</Text>
-                  <Money minor={b.total} size={12.5} weight="600" color={t.textDim} compact />
+                  <Text style={{ color: t.dim, fontSize: 12.5, flex: 1 }}>{b.name}</Text>
+                  <Money minor={b.total} size={12.5} weight="600" color={t.dim} compact />
                 </View>
               ))}
             </View>
@@ -266,8 +267,8 @@ export default function ChatScreen() {
 
     return (
       <View style={{ alignSelf: 'flex-start', maxWidth: '88%', marginBottom: 8 }}>
-        <View style={{ backgroundColor: t.cardAlt, borderRadius: 16, borderBottomLeftRadius: 5, paddingHorizontal: 14, paddingVertical: 10 }}>
-          <Text style={{ color: t.textDim, fontSize: 13.5, lineHeight: 19 }}>{item.text}</Text>
+        <View style={{ backgroundColor: t.sunken, borderRadius: 16, borderBottomLeftRadius: 5, paddingHorizontal: 14, paddingVertical: 10 }}>
+          <Text style={{ color: t.dim, fontSize: 13.5, lineHeight: 19 }}>{item.text}</Text>
         </View>
       </View>
     );
@@ -276,13 +277,13 @@ export default function ChatScreen() {
   const MiniChip = ({ label, active, warn }: { label: string; active?: boolean; warn?: boolean }) => (
     <View
       style={{
-        backgroundColor: warn ? t.dangerSoft : active ? t.accentSoft : t.cardAlt,
+        backgroundColor: warn ? t.downSoft : active ? t.brandSoft : t.sunken,
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: radius.pill,
       }}
     >
-      <Text style={{ color: warn ? t.danger : active ? t.accent : t.textDim, fontSize: 10.5, fontWeight: '700' }}>
+      <Text style={{ color: warn ? t.down : active ? t.brand : t.dim, fontSize: 10.5, fontWeight: '700' }}>
         {label}
       </Text>
     </View>
@@ -293,14 +294,14 @@ export default function ChatScreen() {
       <View style={{ paddingHorizontal: space.lg, paddingTop: 6, paddingBottom: 10, gap: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: t.textDim, fontSize: 12, fontWeight: '600' }}>Spent today</Text>
+            <Text style={{ color: t.dim, fontSize: 12, fontWeight: '600' }}>Spent today</Text>
             <Money minor={todayTotal} size={26} />
           </View>
           <Pressable
             onPress={() => { tap(); setCreating(true); }}
-            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: t.cardAlt, alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: t.sunken, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Ionicons name="add" size={22} color={t.text} />
+            <Ionicons name="add" size={22} color={t.ink} />
           </Pressable>
           <Pressable
             onPress={() => {
@@ -308,9 +309,9 @@ export default function ChatScreen() {
               clearMessages();
               refresh();
             }}
-            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: t.cardAlt, alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: t.sunken, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Ionicons name="trash-outline" size={18} color={t.textDim} />
+            <Ionicons name="trash-outline" size={18} color={t.dim} />
           </Pressable>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -320,14 +321,14 @@ export default function ChatScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               gap: 6,
-              backgroundColor: pinnedIsToday ? t.cardAlt : t.accentSoft,
+              backgroundColor: pinnedIsToday ? t.sunken : t.brandSoft,
               paddingHorizontal: 11,
               paddingVertical: 6,
               borderRadius: radius.pill,
             }}
           >
-            <Ionicons name="calendar-outline" size={13} color={pinnedIsToday ? t.textDim : t.accent} />
-            <Text style={{ color: pinnedIsToday ? t.textDim : t.accent, fontSize: 12.5, fontWeight: '700' }}>
+            <Ionicons name="calendar-outline" size={13} color={pinnedIsToday ? t.dim : t.brand} />
+            <Text style={{ color: pinnedIsToday ? t.dim : t.brand, fontSize: 12.5, fontWeight: '700' }}>
               Adding to · {dayLabel(pinnedDate)}
             </Text>
           </Pressable>
@@ -366,9 +367,9 @@ export default function ChatScreen() {
                   <Pressable
                     key={h}
                     onPress={() => { tap(); setInput(h); }}
-                    style={{ backgroundColor: t.cardAlt, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill }}
+                    style={{ backgroundColor: t.sunken, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill }}
                   >
-                    <Text style={{ color: t.textDim, fontSize: 13 }}>{h}</Text>
+                    <Text style={{ color: t.dim, fontSize: 13 }}>{h}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -386,14 +387,14 @@ export default function ChatScreen() {
             paddingBottom: 10,
             borderTopWidth: StyleSheet.hairlineWidth,
             borderTopColor: t.line,
-            backgroundColor: t.bgElev,
+            backgroundColor: t.raised,
           }}
         >
           <TextInput
             value={input}
             onChangeText={setInput}
             placeholder={pinnedIsToday ? 'food 300' : `Adding to ${dayLabel(pinnedDate)}…`}
-            placeholderTextColor={t.textFaint}
+            placeholderTextColor={t.faint}
             onSubmitEditing={send}
             returnKeyType="send"
             blurOnSubmit={false}
@@ -401,12 +402,12 @@ export default function ChatScreen() {
             style={{
               flex: 1,
               maxHeight: 110,
-              backgroundColor: t.cardAlt,
+              backgroundColor: t.sunken,
               borderRadius: 20,
               paddingHorizontal: 16,
               paddingTop: 11,
               paddingBottom: 11,
-              color: t.text,
+              color: t.ink,
               fontSize: 15.5,
             }}
           />
@@ -417,12 +418,12 @@ export default function ChatScreen() {
               width: 42,
               height: 42,
               borderRadius: 21,
-              backgroundColor: input.trim() ? t.accent : t.cardAlt,
+              backgroundColor: input.trim() ? t.brand : t.sunken,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="arrow-up" size={20} color={input.trim() ? t.onAccent : t.textFaint} />
+            <Ionicons name="arrow-up" size={20} color={input.trim() ? t.onBrand : t.faint} />
           </Pressable>
         </View>
       </KeyboardAvoidingView>

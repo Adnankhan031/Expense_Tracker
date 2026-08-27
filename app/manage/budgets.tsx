@@ -7,6 +7,7 @@ import { radius, space, useTheme } from '../../src/theme';
 import { Button, Card, IconBadge, Money, Screen, SectionTitle } from '../../src/ui';
 import { HBar } from '../../src/charts';
 import { currentMonth, monthEnd, monthLabel, monthStart, toMinor } from '../../src/format';
+import { IconTile } from '../../src/icons';
 
 export default function BudgetsScreen() {
   const t = useTheme();
@@ -49,22 +50,22 @@ export default function BudgetsScreen() {
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: t.cardAlt,
+        backgroundColor: t.sunken,
         borderRadius: radius.sm,
         paddingHorizontal: 10,
         minWidth: 112,
       }}
     >
-      <Text style={{ color: t.textFaint, fontSize: 14 }}>{currency}</Text>
+      <Text style={{ color: t.faint, fontSize: 14 }}>{currency.symbol}</Text>
       <TextInput
         value={values[key] ?? ''}
         onChangeText={(v) => setValues((s) => ({ ...s, [key]: v.replace(/[^0-9.]/g, '') }))}
         keyboardType="decimal-pad"
         placeholder="—"
-        placeholderTextColor={t.textFaint}
+        placeholderTextColor={t.faint}
         style={{
           flex: 1,
-          color: t.text,
+          color: t.ink,
           fontSize: 15,
           fontWeight: '700',
           paddingVertical: 9,
@@ -79,7 +80,7 @@ export default function BudgetsScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
-        <Text style={{ color: t.textDim, fontSize: 13, lineHeight: 19 }}>
+        <Text style={{ color: t.dim, fontSize: 13, lineHeight: 19 }}>
           Monthly caps. Leave a category blank for no limit. You'll see progress rings on the Overview tab and a nudge
           once you cross 80%.
         </Text>
@@ -88,9 +89,9 @@ export default function BudgetsScreen() {
         <Card>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: t.text, fontSize: 15, fontWeight: '600' }}>Everything, {monthLabel(ym, true)}</Text>
-              <Text style={{ color: t.textFaint, fontSize: 11.5, marginTop: 2 }}>
-                Spent so far: {currency}
+              <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600' }}>Everything, {monthLabel(ym, true)}</Text>
+              <Text style={{ color: t.faint, fontSize: 11.5, marginTop: 2 }}>
+                Spent so far: {currency.symbol}
                 {(totalSpent / 100).toLocaleString()}
               </Text>
             </View>
@@ -100,7 +101,7 @@ export default function BudgetsScreen() {
             <View style={{ marginTop: space.md }}>
               <HBar
                 fraction={totalSpent / toMinor(overall)}
-                color={totalSpent >= toMinor(overall) ? t.danger : totalSpent >= toMinor(overall) * 0.8 ? t.warn : t.accent}
+                color={totalSpent >= toMinor(overall) ? t.down : totalSpent >= toMinor(overall) * 0.8 ? t.warn : t.brand}
                 height={9}
               />
             </View>
@@ -115,13 +116,13 @@ export default function BudgetsScreen() {
             return (
               <View key={c.id} style={{ paddingVertical: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <IconBadge icon={c.icon} color={c.color} size={34} />
+                  <IconTile name={c.icon} color={c.color} size={34} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: t.text, fontSize: 14.5, fontWeight: '600' }}>{c.name}</Text>
+                    <Text style={{ color: t.ink, fontSize: 14.5, fontWeight: '600' }}>{c.name}</Text>
                     {used > 0 && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 }}>
-                        <Money minor={used} size={11} weight="600" color={t.textFaint} />
-                        <Text style={{ color: t.textFaint, fontSize: 11 }}>used</Text>
+                        <Money minor={used} size={11} weight="600" color={t.faint} />
+                        <Text style={{ color: t.faint, fontSize: 11 }}>used</Text>
                       </View>
                     )}
                   </View>
@@ -131,7 +132,7 @@ export default function BudgetsScreen() {
                   <View style={{ marginTop: 8, marginLeft: 44 }}>
                     <HBar
                       fraction={used / toMinor(limit)}
-                      color={used >= toMinor(limit) ? t.danger : used >= toMinor(limit) * 0.8 ? t.warn : c.color}
+                      color={used >= toMinor(limit) ? t.down : used >= toMinor(limit) * 0.8 ? t.warn : c.color}
                     />
                   </View>
                 )}

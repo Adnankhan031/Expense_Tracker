@@ -12,10 +12,11 @@ import { Card, EmptyState, IconBadge, Money, Screen, SectionTitle, tap } from '.
 import { MonthPickerSheet } from '../../src/pickers';
 import { currentMonth, formatMoney, monthLabel, shiftMonth, shortDayLabel } from '../../src/format';
 import { TxnEditor } from '../../src/TxnEditor';
+import { CategoryIcon, IconTile } from '../../src/icons';
 
 export default function DashboardScreen() {
   const t = useTheme();
-  const { currency, numberStyle } = useSettings();
+  const { currency } = useSettings();
   const { version, reload } = useData();
   const [ym, setYm] = useState(currentMonth());
   const [stats, setStats] = useState<MonthStats | null>(null);
@@ -24,8 +25,8 @@ export default function DashboardScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const fmt = useCallback(
-    (m: number) => formatMoney(m, { symbol: currency, style: numberStyle }),
-    [currency, numberStyle]
+    (m: number) => formatMoney(m, { symbol: currency.symbol, style: currency.grouping, digits: currency.digits }),
+    [currency]
   );
 
   const load = useCallback(() => {
@@ -57,11 +58,11 @@ export default function DashboardScreen() {
         {/* month switcher */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.lg }}>
           <Pressable onPress={() => { tap(); setYm(shiftMonth(ym, -1)); }} hitSlop={14}>
-            <Ionicons name="chevron-back" size={24} color={t.textDim} />
+            <Ionicons name="chevron-back" size={24} color={t.dim} />
           </Pressable>
           <Pressable onPress={() => { tap(); setShowMonth(true); }} style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={{ color: t.text, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 }}>{monthLabel(ym)}</Text>
-            <Text style={{ color: t.textFaint, fontSize: 11, marginTop: 1 }}>
+            <Text style={{ color: t.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 }}>{monthLabel(ym)}</Text>
+            <Text style={{ color: t.faint, fontSize: 11, marginTop: 1 }}>
               {stats.count} {stats.count === 1 ? 'entry' : 'entries'}
             </Text>
           </Pressable>
@@ -70,7 +71,7 @@ export default function DashboardScreen() {
             hitSlop={14}
             style={{ opacity: ym < currentMonth() ? 1 : 0.25 }}
           >
-            <Ionicons name="chevron-forward" size={24} color={t.textDim} />
+            <Ionicons name="chevron-forward" size={24} color={t.dim} />
           </Pressable>
         </View>
 
@@ -82,15 +83,15 @@ export default function DashboardScreen() {
               body={
                 isCurrent
                   ? 'Head to the Add tab and type your first expense.'
-                  : 'You can backfill this month from Settings › Add past months.'
+                  : 'Add entries for this month by hand from the Add entries screen.'
               }
             />
             {!isCurrent && (
               <Pressable
-                onPress={() => { tap(); router.push('/backfill'); }}
-                style={{ alignSelf: 'center', backgroundColor: t.accentSoft, paddingHorizontal: 16, paddingVertical: 9, borderRadius: radius.pill }}
+                onPress={() => { tap(); router.push('/manual'); }}
+                style={{ alignSelf: 'center', backgroundColor: t.brandSoft, paddingHorizontal: 16, paddingVertical: 9, borderRadius: radius.pill }}
               >
-                <Text style={{ color: t.accent, fontWeight: '700' }}>Add past months</Text>
+                <Text style={{ color: t.brand, fontWeight: '700' }}>Add entries manually</Text>
               </Pressable>
             )}
           </Card>
@@ -100,16 +101,16 @@ export default function DashboardScreen() {
             <Card>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: t.textDim, fontSize: 12.5, fontWeight: '600' }}>Total spent</Text>
+                  <Text style={{ color: t.dim, fontSize: 12.5, fontWeight: '600' }}>Total spent</Text>
                   <Money minor={stats.expense} size={38} style={{ marginTop: 2 }} />
                   {stats.deltaPct !== null && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
                       <Ionicons
                         name={stats.deltaPct > 0 ? 'trending-up' : 'trending-down'}
                         size={14}
-                        color={stats.deltaPct > 0 ? t.danger : t.accent}
+                        color={stats.deltaPct > 0 ? t.down : t.brand}
                       />
-                      <Text style={{ color: stats.deltaPct > 0 ? t.danger : t.accent, fontSize: 12.5, fontWeight: '700' }}>
+                      <Text style={{ color: stats.deltaPct > 0 ? t.down : t.brand, fontSize: 12.5, fontWeight: '700' }}>
                         {Math.abs(Math.round(stats.deltaPct))}% vs {monthLabel(shiftMonth(ym, -1), true)}
                       </Text>
                     </View>
@@ -117,17 +118,17 @@ export default function DashboardScreen() {
                 </View>
                 {stats.budgetTotal > 0 && (
                   <Ring progress={budgetPct} size={82} thickness={8}>
-                    <Text style={{ color: t.text, fontWeight: '800', fontSize: 15 }}>{Math.round(budgetPct * 100)}%</Text>
-                    <Text style={{ color: t.textFaint, fontSize: 9.5 }}>of budget</Text>
+                    <Text style={{ color: t.ink, fontWeight: '800', fontSize: 15 }}>{Math.round(budgetPct * 100)}%</Text>
+                    <Text style={{ color: t.faint, fontSize: 9.5 }}>of budget</Text>
                   </Ring>
                 )}
               </View>
 
               <View style={{ flexDirection: 'row', marginTop: space.lg, gap: space.md }}>
-                <Stat label="Income" value={<Money minor={stats.income} size={16} color={t.income} />} />
+                <Stat label="Income" value={<Money minor={stats.income} size={16} color={t.up} />} />
                 <Stat
                   label="Net"
-                  value={<Money minor={stats.net} size={16} color={stats.net >= 0 ? t.income : t.danger} prefix={stats.net >= 0 ? '+' : ''} />}
+                  value={<Money minor={stats.net} size={16} color={stats.net >= 0 ? t.up : t.down} prefix={stats.net >= 0 ? '+' : ''} />}
                 />
                 <Stat label="Per day" value={<Money minor={Math.round(stats.avgPerDay)} size={16} />} />
                 {isCurrent && <Stat label="Projected" value={<Money minor={stats.projected} size={16} compact />} />}
@@ -141,14 +142,14 @@ export default function DashboardScreen() {
             </Card>
 
             {/* donut */}
-            <SectionTitle right={<Pressable onPress={() => { tap(); router.push('/analytics'); }}><Text style={{ color: t.accent, fontSize: 12, fontWeight: '700' }}>More</Text></Pressable>}>
+            <SectionTitle right={<Pressable onPress={() => { tap(); router.push('/analytics'); }}><Text style={{ color: t.brand, fontSize: 12, fontWeight: '700' }}>More</Text></Pressable>}>
               Where it went
             </SectionTitle>
             <Card>
               <View style={{ alignItems: 'center', marginBottom: space.lg }}>
                 <Donut data={slices} size={168} thickness={20}>
                   <Money minor={stats.expense} size={20} compact />
-                  <Text style={{ color: t.textFaint, fontSize: 10.5, marginTop: 1 }}>
+                  <Text style={{ color: t.faint, fontSize: 10.5, marginTop: 1 }}>
                     {stats.byCategory.length} categories
                   </Text>
                 </Donut>
@@ -160,9 +161,9 @@ export default function DashboardScreen() {
                     onPress={() => { tap(); router.push({ pathname: '/category/[id]', params: { id: c.category_id, ym } }); }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 5 }}>
-                      <Text style={{ fontSize: 13 }}>{c.icon}</Text>
-                      <Text style={{ color: t.text, fontSize: 13.5, fontWeight: '600', flex: 1 }}>{c.name}</Text>
-                      <Text style={{ color: t.textFaint, fontSize: 11, fontWeight: '600' }}>
+                      <CategoryIcon name={c.icon} size={14} color={c.color} />
+                      <Text style={{ color: t.ink, fontSize: 13.5, fontWeight: '600', flex: 1 }}>{c.name}</Text>
+                      <Text style={{ color: t.faint, fontSize: 11, fontWeight: '600' }}>
                         {Math.round((c.total / stats.expense) * 100)}%
                       </Text>
                       <Money minor={c.total} size={13.5} weight="700" />
@@ -184,16 +185,16 @@ export default function DashboardScreen() {
                       style={{
                         flexDirection: 'row',
                         gap: 10,
-                        backgroundColor: t.card,
+                        backgroundColor: t.surface,
                         borderRadius: radius.md,
                         padding: 13,
                         borderLeftWidth: 3,
                         borderLeftColor:
-                          ins.tone === 'bad' ? t.danger : ins.tone === 'warn' ? t.warn : ins.tone === 'good' ? t.accent : t.lineStrong,
+                          ins.tone === 'bad' ? t.down : ins.tone === 'warn' ? t.warn : ins.tone === 'good' ? t.brand : t.lineStrong,
                       }}
                     >
-                      <Text style={{ fontSize: 15 }}>{ins.icon}</Text>
-                      <Text style={{ color: t.textDim, fontSize: 13.5, lineHeight: 19, flex: 1 }}>{ins.text}</Text>
+                      
+                      <Text style={{ color: t.dim, fontSize: 13.5, lineHeight: 19, flex: 1 }}>{ins.text}</Text>
                     </View>
                   ))}
                 </View>
@@ -201,7 +202,7 @@ export default function DashboardScreen() {
             )}
 
             {/* recent */}
-            <SectionTitle right={<Pressable onPress={() => { tap(); router.push('/history'); }}><Text style={{ color: t.accent, fontSize: 12, fontWeight: '700' }}>See all</Text></Pressable>}>
+            <SectionTitle right={<Pressable onPress={() => { tap(); router.push('/history'); }}><Text style={{ color: t.brand, fontSize: 12, fontWeight: '700' }}>See all</Text></Pressable>}>
               Recent
             </SectionTitle>
             <Card>
@@ -218,10 +219,10 @@ export default function DashboardScreen() {
                     borderTopColor: t.line,
                   }}
                 >
-                  <IconBadge icon={x.cat_icon} color={x.cat_color} size={34} />
+                  <IconTile name={x.cat_icon} color={x.cat_color} size={34} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: t.text, fontSize: 14.5, fontWeight: '600' }}>{x.note || x.cat_name}</Text>
-                    <Text style={{ color: t.textFaint, fontSize: 11.5, marginTop: 1 }}>
+                    <Text style={{ color: t.ink, fontSize: 14.5, fontWeight: '600' }}>{x.note || x.cat_name}</Text>
+                    <Text style={{ color: t.faint, fontSize: 11.5, marginTop: 1 }}>
                       {shortDayLabel(x.local_date)}
                       {x.method ? ` · ${x.method}` : ''}
                     </Text>
@@ -229,7 +230,7 @@ export default function DashboardScreen() {
                   <Money
                     minor={x.amount_minor}
                     size={15}
-                    color={x.type === 'income' ? t.income : t.text}
+                    color={x.type === 'income' ? t.up : t.ink}
                     prefix={x.type === 'income' ? '+' : ''}
                   />
                 </Pressable>
@@ -265,7 +266,7 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   const t = useTheme();
   return (
     <View style={{ flex: 1 }}>
-      <Text style={{ color: t.textFaint, fontSize: 10.5, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+      <Text style={{ color: t.faint, fontSize: 10.5, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>
         {label}
       </Text>
       <View style={{ marginTop: 3 }}>{value}</View>

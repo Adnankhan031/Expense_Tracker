@@ -6,6 +6,7 @@ import { Account, archiveAccount, saveAccount, searchTxns } from '../../src/db';
 import { useData } from '../../src/store';
 import { radius, space, useTheme } from '../../src/theme';
 import { Button, Card, Chip, IconBadge, Money, Screen, SectionTitle, Sheet, tap } from '../../src/ui';
+import { IconTile } from '../../src/icons';
 
 const ICONS = ['💵', '🏦', '💳', '📱', '🪙', '👛', '🏧', '💎'];
 
@@ -28,7 +29,7 @@ export default function AccountsScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 48 }}>
-        <Text style={{ color: t.textDim, fontSize: 13, lineHeight: 19 }}>
+        <Text style={{ color: t.dim, fontSize: 13, lineHeight: 19 }}>
           Tag entries with where the money came from. The balance below is income minus expenses for that account, not a
           bank balance.
         </Text>
@@ -52,13 +53,13 @@ export default function AccountsScreen() {
                   borderTopColor: t.line,
                 }}
               >
-                <IconBadge icon={a.icon} color={t.info} size={36} />
+                <IconTile name={a.icon} color={t.info} size={36} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: t.text, fontSize: 15, fontWeight: '600' }}>{a.name}</Text>
-                  <Text style={{ color: t.textFaint, fontSize: 11.5, textTransform: 'capitalize', marginTop: 1 }}>{a.kind}</Text>
+                  <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600' }}>{a.name}</Text>
+                  <Text style={{ color: t.faint, fontSize: 11.5, textTransform: 'capitalize', marginTop: 1 }}>{a.kind}</Text>
                 </View>
-                <Money minor={net} size={14} color={net >= 0 ? t.income : t.danger} prefix={net > 0 ? '+' : ''} />
-                <Ionicons name="chevron-forward" size={17} color={t.textFaint} />
+                <Money minor={net} size={14} color={net >= 0 ? t.up : t.down} prefix={net > 0 ? '+' : ''} />
+                <Ionicons name="chevron-forward" size={17} color={t.faint} />
               </Pressable>
             );
           })}
@@ -111,8 +112,8 @@ function AccountEditor({
         value={name}
         onChangeText={setName}
         placeholder="Name"
-        placeholderTextColor={t.textFaint}
-        style={{ backgroundColor: t.cardAlt, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, color: t.text, fontSize: 15 }}
+        placeholderTextColor={t.faint}
+        style={{ backgroundColor: t.sunken, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, color: t.ink, fontSize: 15 }}
       />
       <View style={{ flexDirection: 'row', gap: 7, flexWrap: 'wrap' }}>
         {['cash', 'bank', 'card', 'wallet'].map((k) => (
@@ -130,7 +131,7 @@ function AccountEditor({
               borderRadius: radius.md,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: icon === ic ? t.accentSoft : t.cardAlt,
+              backgroundColor: icon === ic ? t.brandSoft : t.sunken,
             }}
           >
             <Text style={{ fontSize: 19 }}>{ic}</Text>

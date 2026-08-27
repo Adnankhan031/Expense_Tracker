@@ -6,6 +6,7 @@ import { Category, archiveCategory, listCategories, saveCategory } from '../../s
 import { useData } from '../../src/store';
 import { CATEGORY_COLORS, radius, space, useTheme } from '../../src/theme';
 import { Button, Card, Chip, IconBadge, Screen, SectionTitle, Sheet, tap } from '../../src/ui';
+import { IconTile } from '../../src/icons';
 
 const ICON_CHOICES = [
   '🍜', '🛒', '🚕', '⛽', '💡', '🏠', '🛍️', '🩺', '🎬', '🔁', '✈️', '📚',
@@ -32,22 +33,22 @@ export default function CategoriesScreen() {
       onPress={() => { tap(); setEditing(c); }}
       style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: 9, opacity: c.archived ? 0.45 : 1 }}
     >
-      <IconBadge icon={c.icon} color={c.color} size={36} />
+      <IconTile name={c.icon} color={c.color} size={36} />
       <View style={{ flex: 1 }}>
-        <Text style={{ color: t.text, fontSize: 15, fontWeight: '600' }}>{c.name}</Text>
-        <Text style={{ color: t.textFaint, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
+        <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600' }}>{c.name}</Text>
+        <Text style={{ color: t.faint, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
           {c.archived ? 'Hidden · ' : ''}
           {(c.keywords || '').split('|').filter(Boolean).slice(0, 4).join(', ') || 'no keywords'}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={17} color={t.textFaint} />
+      <Ionicons name="chevron-forward" size={17} color={t.faint} />
     </Pressable>
   );
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 48 }}>
-        <Text style={{ color: t.textDim, fontSize: 13, lineHeight: 19 }}>
+        <Text style={{ color: t.dim, fontSize: 13, lineHeight: 19 }}>
           Keywords are what the chat parser looks for. Add the words you actually type — shop names, nicknames, anything.
         </Text>
 
@@ -140,24 +141,24 @@ function CategoryEditor({
   };
 
   const input = {
-    backgroundColor: t.cardAlt,
+    backgroundColor: t.sunken,
     borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: t.text,
+    color: t.ink,
     fontSize: 15,
   } as const;
 
   return (
     <Sheet visible={visible} onClose={onClose} title={category ? 'Edit category' : 'New category'}>
-      <TextInput value={name} onChangeText={setName} placeholder="Name" placeholderTextColor={t.textFaint} style={input} />
+      <TextInput value={name} onChangeText={setName} placeholder="Name" placeholderTextColor={t.faint} style={input} />
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <Chip label="Expense" active={kind === 'expense'} onPress={() => setKind('expense')} />
         <Chip label="Income" active={kind === 'income'} onPress={() => setKind('income')} />
       </View>
 
-      <Text style={{ color: t.textDim, fontSize: 12, fontWeight: '600' }}>Icon</Text>
+      <Text style={{ color: t.dim, fontSize: 12, fontWeight: '600' }}>Icon</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
         {ICON_CHOICES.map((ic) => (
           <Pressable
@@ -169,7 +170,7 @@ function CategoryEditor({
               borderRadius: radius.md,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: icon === ic ? color + '33' : t.cardAlt,
+              backgroundColor: icon === ic ? color + '33' : t.sunken,
               borderWidth: icon === ic ? 1.5 : 0,
               borderColor: color,
             }}
@@ -179,7 +180,7 @@ function CategoryEditor({
         ))}
       </View>
 
-      <Text style={{ color: t.textDim, fontSize: 12, fontWeight: '600' }}>Colour</Text>
+      <Text style={{ color: t.dim, fontSize: 12, fontWeight: '600' }}>Colour</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {CATEGORY_COLORS.map((c) => (
           <Pressable
@@ -191,18 +192,18 @@ function CategoryEditor({
               borderRadius: 10,
               backgroundColor: c,
               borderWidth: color === c ? 3 : 0,
-              borderColor: t.text,
+              borderColor: t.ink,
             }}
           />
         ))}
       </View>
 
-      <Text style={{ color: t.textDim, fontSize: 12, fontWeight: '600' }}>Keywords (comma separated)</Text>
+      <Text style={{ color: t.dim, fontSize: 12, fontWeight: '600' }}>Keywords (comma separated)</Text>
       <TextInput
         value={keywords}
         onChangeText={setKeywords}
         placeholder="swiggy, zomato, lunch, dinner"
-        placeholderTextColor={t.textFaint}
+        placeholderTextColor={t.faint}
         multiline
         style={{ ...input, minHeight: 80, textAlignVertical: 'top' }}
       />

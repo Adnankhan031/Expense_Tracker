@@ -11,48 +11,46 @@ import {
   setSetting,
 } from './db';
 import { todayLocal } from './format';
+import { CURRENCIES, DEFAULT_CURRENCY, currencyByCode, type Currency } from './currency';
 
 /* ------------------------------------------------------------------ */
 /* settings                                                            */
 /* ------------------------------------------------------------------ */
 
 export type ThemeMode = 'system' | 'light' | 'dark';
-export type NumberStyle = 'indian' | 'international';
 
 type SettingsState = {
   themeMode: ThemeMode;
-  currency: string;
-  numberStyle: NumberStyle;
+  currencyCode: string;
+  currency: Currency;
   hydrated: boolean;
   hydrate: () => void;
   setThemeMode: (m: ThemeMode) => void;
-  setCurrency: (c: string) => void;
-  setNumberStyle: (s: NumberStyle) => void;
+  setCurrencyCode: (code: string) => void;
 };
 
 export const useSettings = create<SettingsState>((set) => ({
   themeMode: 'dark',
-  currency: '₹',
-  numberStyle: 'indian',
+  currencyCode: DEFAULT_CURRENCY,
+  currency: currencyByCode(DEFAULT_CURRENCY),
   hydrated: false,
-  hydrate: () =>
+  hydrate: () => {
+    const code = getSetting('currencyCode');
+    const valid = code && CURRENCIES.some((c) => c.code === code) ? code : DEFAULT_CURRENCY;
     set({
       themeMode: (getSetting('themeMode') as ThemeMode) ?? 'dark',
-      currency: getSetting('currency') ?? '₹',
-      numberStyle: (getSetting('numberStyle') as NumberStyle) ?? 'indian',
+      currencyCode: valid,
+      currency: currencyByCode(valid),
       hydrated: true,
-    }),
+    });
+  },
   setThemeMode: (m) => {
     setSetting('themeMode', m);
     set({ themeMode: m });
   },
-  setCurrency: (c) => {
-    setSetting('currency', c);
-    set({ currency: c });
-  },
-  setNumberStyle: (s) => {
-    setSetting('numberStyle', s);
-    set({ numberStyle: s });
+  setCurrencyCode: (code) => {
+    setSetting('currencyCode', code);
+    set({ currencyCode: code, currency: currencyByCode(code) });
   },
 }));
 

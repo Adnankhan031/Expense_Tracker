@@ -16,7 +16,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'food',
     name: 'Food & Drink',
-    icon: '🍜',
+    icon: 'utensils',
     color: '#FF8A65',
     kind: 'expense',
     keywords: [
@@ -31,7 +31,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'groceries',
     name: 'Groceries',
-    icon: '🛒',
+    icon: 'cart',
     color: '#81C784',
     kind: 'expense',
     keywords: [
@@ -44,7 +44,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'transport',
     name: 'Transport',
-    icon: '🚕',
+    icon: 'taxi',
     color: '#4FC3F7',
     kind: 'expense',
     keywords: [
@@ -56,7 +56,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'fuel',
     name: 'Fuel',
-    icon: '⛽',
+    icon: 'fuel',
     color: '#FFB74D',
     kind: 'expense',
     keywords: ['fuel', 'petrol', 'diesel', 'gas station', 'cng', 'refuel', 'tank', 'hp petrol', 'indian oil', 'bunk'],
@@ -64,7 +64,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'bills',
     name: 'Bills & Utilities',
-    icon: '💡',
+    icon: 'bulb',
     color: '#7986CB',
     kind: 'expense',
     keywords: [
@@ -76,7 +76,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'rent',
     name: 'Rent',
-    icon: '🏠',
+    icon: 'house',
     color: '#A1887F',
     kind: 'expense',
     keywords: ['rent', 'house rent', 'room rent', 'pg', 'hostel', 'deposit', 'landlord', 'lease'],
@@ -84,7 +84,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'shopping',
     name: 'Shopping',
-    icon: '🛍️',
+    icon: 'bag',
     color: '#BA68C8',
     kind: 'expense',
     keywords: [
@@ -97,7 +97,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'health',
     name: 'Health',
-    icon: '🩺',
+    icon: 'stethoscope',
     color: '#4DB6AC',
     kind: 'expense',
     keywords: [
@@ -110,7 +110,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'entertainment',
     name: 'Entertainment',
-    icon: '🎬',
+    icon: 'film',
     color: '#F06292',
     kind: 'expense',
     keywords: [
@@ -122,7 +122,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'subscriptions',
     name: 'Subscriptions',
-    icon: '🔁',
+    icon: 'repeat',
     color: '#9575CD',
     kind: 'expense',
     keywords: [
@@ -134,7 +134,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'travel',
     name: 'Travel & Tour',
-    icon: '✈️',
+    icon: 'plane',
     color: '#64B5F6',
     kind: 'expense',
     keywords: [
@@ -147,7 +147,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'education',
     name: 'Education',
-    icon: '📚',
+    icon: 'cap',
     color: '#AED581',
     kind: 'expense',
     keywords: [
@@ -159,7 +159,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'personal',
     name: 'Personal Care',
-    icon: '💇',
+    icon: 'scissors',
     color: '#FF7043',
     kind: 'expense',
     keywords: [
@@ -171,7 +171,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'gifts',
     name: 'Gifts & Donations',
-    icon: '🎁',
+    icon: 'gift',
     color: '#E57373',
     kind: 'expense',
     keywords: [
@@ -182,7 +182,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'unexpected',
     name: 'Unexpected',
-    icon: '⚡',
+    icon: 'alert',
     color: '#FFD54F',
     kind: 'expense',
     keywords: [
@@ -194,7 +194,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'family',
     name: 'Family & Kids',
-    icon: '👨‍👩‍👧',
+    icon: 'users',
     color: '#90A4AE',
     kind: 'expense',
     keywords: [
@@ -205,7 +205,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'investments',
     name: 'Investments & Savings',
-    icon: '📈',
+    icon: 'trending',
     color: '#4DB6AC',
     kind: 'expense',
     keywords: [
@@ -217,7 +217,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'loan',
     name: 'Loan & EMI',
-    icon: '🏦',
+    icon: 'bank',
     color: '#9575CD',
     kind: 'expense',
     keywords: ['loan', 'emi', 'installment', 'instalment', 'credit card bill', 'repayment', 'interest paid', 'borrowed return'],
@@ -225,7 +225,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'other',
     name: 'Other',
-    icon: '📦',
+    icon: 'package',
     color: '#90A4AE',
     kind: 'expense',
     keywords: ['other', 'misc', 'miscellaneous', 'random', 'general', 'uncategorised', 'uncategorized'],
@@ -235,7 +235,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'salary',
     name: 'Salary',
-    icon: '💰',
+    icon: 'wallet',
     color: '#3DDC97',
     kind: 'income',
     keywords: ['salary', 'sal', 'paycheck', 'pay', 'stipend', 'wages', 'monthly salary'],
@@ -243,7 +243,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'freelance',
     name: 'Freelance & Business',
-    icon: '💼',
+    icon: 'briefcase',
     color: '#4FC3F7',
     kind: 'income',
     keywords: ['freelance', 'freelancing', 'client', 'project payment', 'business', 'sales', 'profit', 'consulting', 'gig'],
@@ -251,7 +251,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'returns',
     name: 'Interest & Returns',
-    icon: '🪙',
+    icon: 'coins',
     color: '#FFD54F',
     kind: 'income',
     keywords: ['interest', 'dividend', 'returns', 'matured', 'capital gain', 'cashback', 'reward'],
@@ -259,7 +259,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'refund',
     name: 'Refunds',
-    icon: '↩️',
+    icon: 'undo',
     color: '#81C784',
     kind: 'income',
     keywords: ['refund', 'refunded', 'returned money', 'reimbursement', 'reimbursed', 'settled'],
@@ -267,7 +267,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
   {
     id: 'other_income',
     name: 'Other Income',
-    icon: '✨',
+    icon: 'sparkles',
     color: '#BA68C8',
     kind: 'income',
     keywords: ['other income', 'gift received', 'bonus', 'prize', 'won', 'received', 'credited', 'income'],
@@ -275,10 +275,10 @@ export const SEED_CATEGORIES: SeedCategory[] = [
 ];
 
 export const SEED_ACCOUNTS = [
-  { id: 'cash', name: 'Cash', kind: 'cash', icon: '💵' },
-  { id: 'bank', name: 'Bank', kind: 'bank', icon: '🏦' },
-  { id: 'card', name: 'Card', kind: 'card', icon: '💳' },
-  { id: 'wallet', name: 'Wallet / UPI', kind: 'wallet', icon: '📱' },
+  { id: 'cash', name: 'Cash', kind: 'cash', icon: 'note' },
+  { id: 'bank', name: 'Bank', kind: 'bank', icon: 'bank' },
+  { id: 'card', name: 'Card', kind: 'card', icon: 'card' },
+  { id: 'wallet', name: 'Wallet / UPI', kind: 'wallet', icon: 'phone' },
 ];
 
 /** Payment-method words the parser strips out of a line. */
