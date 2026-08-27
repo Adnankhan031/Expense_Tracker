@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native';
 import { Button, Chip, IconBadge, Sheet, tap } from './ui';
 import { radius, space, useTheme } from './theme';
 import {
@@ -62,11 +62,11 @@ export function DatePickerSheet({
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.sm }}>
         <Pressable onPress={() => { tap(); setYm(shiftMonth(ym, -1)); }} hitSlop={12}>
-          <Ionicons name="chevron-back" size={22} color={t.dim} />
+          <ChevronLeft size={22} color={t.dim} />
         </Pressable>
         <Text style={{ color: t.ink, fontWeight: '700', fontSize: 16 }}>{monthLabel(ym)}</Text>
         <Pressable onPress={() => { tap(); setYm(shiftMonth(ym, 1)); }} hitSlop={12}>
-          <Ionicons name="chevron-forward" size={22} color={t.dim} />
+          <ChevronRight size={22} color={t.dim} />
         </Pressable>
       </View>
 
@@ -142,11 +142,11 @@ export function MonthPickerSheet({
     <Sheet visible={visible} onClose={onClose} title="Pick a month">
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Pressable onPress={() => { tap(); setYear(year - 1); }} hitSlop={12}>
-          <Ionicons name="chevron-back" size={22} color={t.dim} />
+          <ChevronLeft size={22} color={t.dim} />
         </Pressable>
         <Text style={{ color: t.ink, fontWeight: '800', fontSize: 18 }}>{year}</Text>
         <Pressable onPress={() => { tap(); setYear(year + 1); }} hitSlop={12}>
-          <Ionicons name="chevron-forward" size={22} color={t.dim} />
+          <ChevronRight size={22} color={t.dim} />
         </Pressable>
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -226,7 +226,7 @@ export function CategoryPickerSheet({
         >
           <IconBadge icon="🗂" color={t.dim} />
           <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600', flex: 1 }}>All categories</Text>
-          {value === null && <Ionicons name="checkmark" size={20} color={t.brand} />}
+          {value === null && <Check size={20} color={t.brand} />}
         </Pressable>
       )}
       {list.map((c) => (
@@ -240,7 +240,7 @@ export function CategoryPickerSheet({
             <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600' }}>{c.name}</Text>
             <Text style={{ color: t.faint, fontSize: 11 }}>{c.kind === 'income' ? 'Income' : 'Expense'}</Text>
           </View>
-          {value === c.id && <Ionicons name="checkmark" size={20} color={t.brand} />}
+          {value === c.id && <Check size={20} color={t.brand} />}
         </Pressable>
       ))}
     </Sheet>
@@ -289,7 +289,7 @@ export function AmountPad({
               })}
             >
               {k === 'del' ? (
-                <Ionicons name="backspace-outline" size={20} color={t.ink} />
+                <ChevronRight size={20} color={t.ink} />
               ) : (
                 <Text style={{ color: t.ink, fontSize: 20, fontWeight: '600' }}>{k}</Text>
               )}

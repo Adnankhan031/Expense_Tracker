@@ -190,9 +190,15 @@ export function extractDate(text: string, today: string): DateHit {
 type AmountHit = { minor: number; matched: string } | null;
 
 export function extractAmount(text: string): AmountHit {
-  // number with optional currency prefix/suffix and optional k / l / cr scale
+  /**
+   * The scale suffix must be followed by a non-letter.
+   *
+   * Without that guard the `l` in "lawson" was read as lakh and turned 135 into
+   * 13,500,000 — and `k` in "kyoshi", `cr` in "cream" would do the same. The
+   * alternation is longest-first so "lakh" is never cut short to "l".
+   */
   const re =
-    /(?:(?:₹|rs\.?|inr|\$|usd)\s*)?(\d{1,3}(?:,\d{2,3})+|\d+)(?:\.(\d{1,2}))?\s*(k|thousand|l|lac|lakh|lakhs|cr|crore|crores|rs\.?|inr|\/-|rupees?)?/i;
+    /(?:(?:₹|¥|rs\.?|inr|jpy|\$|usd|€|eur|£|gbp)\s*)?(\d{1,3}(?:,\d{2,3})+|\d+)(?:\.(\d{1,2}))?\s*(thousand|lakhs|lakh|lac|crores|crore|man|yen|rupees|rupee|rs\.?|inr|cr|\/-|k|l)?(?![a-z])/i;
   const m = text.match(re);
   if (!m) return null;
 
@@ -202,8 +208,9 @@ export function extractAmount(text: string): AmountHit {
   const scale = (m[3] ?? '').toLowerCase();
 
   if (scale === 'k' || scale === 'thousand') value *= 1_000;
+  else if (scale === 'man') value *= 10_000; // 万, how amounts are spoken in Japan
   else if (scale === 'l' || scale === 'lac' || scale === 'lakh' || scale === 'lakhs') value *= 100_000;
-  else if (scale.startsWith('cr')) value *= 10_000_000;
+  else if (scale === 'cr' || scale === 'crore' || scale === 'crores') value *= 10_000_000;
 
   if (!isFinite(value) || value <= 0) return null;
   return { minor: Math.round(value * 100), matched: m[0] };
@@ -241,7 +248,7 @@ export function matchCategory(text: string, ctx: ParseContext, wantType?: TxnTyp
   const words = cleaned.split(' ').filter(Boolean);
 
   // multi-word phrases first (longest wins), then single words
-  for (let size = Math.min(3, words.length); size >= 1; size--) {
+  for (let size = Math.min(4, words.length); size >= 1; size--) {
     for (let i = 0; i + size <= words.length; i++) {
       const phrase = words.slice(i, i + size).join(' ');
       const alias = ctx.aliases.get(phrase);

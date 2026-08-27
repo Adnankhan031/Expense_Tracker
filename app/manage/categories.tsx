@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native';
 
 import { Category, archiveCategory, listCategories, saveCategory } from '../../src/db';
 import { useData } from '../../src/store';
@@ -41,7 +41,7 @@ export default function CategoriesScreen() {
           {(c.keywords || '').split('|').filter(Boolean).slice(0, 4).join(', ') || 'no keywords'}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={17} color={t.faint} />
+      <ChevronRight size={17} color={t.faint} />
     </Pressable>
   );
 

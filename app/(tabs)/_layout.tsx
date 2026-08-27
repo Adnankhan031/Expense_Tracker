@@ -1,7 +1,7 @@
 import React from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { CalendarDays, ChartNoAxesCombined, MessageSquareText, PieChart, Settings } from 'lucide-react-native';
 import { useTheme } from '../../src/theme';
 
 export default function TabsLayout() {
@@ -30,35 +30,35 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Add',
-          tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-ellipses" size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size }) => <MessageSquareText size={size - 2} color={color} />,
         }}
       />
       <Tabs.Screen
         name="dashboard"
         options={{
           title: 'Overview',
-          tabBarIcon: ({ color, size }) => <Ionicons name="pie-chart" size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size }) => <PieChart size={size - 2} color={color} />,
         }}
       />
       <Tabs.Screen
         name="analytics"
         options={{
           title: 'Analytics',
-          tabBarIcon: ({ color, size }) => <Ionicons name="stats-chart" size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size }) => <ChartNoAxesCombined size={size - 2} color={color} />,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: 'History',
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size }) => <CalendarDays size={size - 2} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings-sharp" size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size }) => <Settings size={size - 2} color={color} />,
         }}
       />
     </Tabs>

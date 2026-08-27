@@ -36,6 +36,9 @@ export type Txn = {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  /** Money you expect back — a work expense, a shared bill, a claim. */
+  reimbursable: number;
+  reimbursed_at: string | null;
 };
 
 export type TxnWithCategory = Txn & { cat_name: string; cat_icon: string; cat_color: string };
@@ -140,8 +143,50 @@ export function initDb() {
     db.execSync('PRAGMA user_version = 1');
   }
 
+  if (version < 2) {
+    // Some spending comes back later. Track it rather than pretending it never happened.
+    db.execSync(`
+      ALTER TABLE transactions ADD COLUMN reimbursable INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE transactions ADD COLUMN reimbursed_at TEXT;
+    `);
+    db.execSync('PRAGMA user_version = 2');
+  }
+
   seedIfEmpty();
+  syncSeedCategories();
   migrateIcons();
+}
+
+/**
+ * Bring an existing install up to date with the shipped catalogue.
+ *
+ * New seed categories are inserted; for ones the user already has we union the
+ * keywords rather than overwrite, so vocabulary improvements land without
+ * discarding anything they added themselves. Names, colours and icons are left
+ * alone — those are theirs to change.
+ */
+function syncSeedCategories() {
+  const existing = new Map(
+    db.getAllSync<{ id: string; keywords: string }>('SELECT id, keywords FROM categories').map((r) => [r.id, r.keywords])
+  );
+  const maxSort =
+    db.getFirstSync<{ m: number }>('SELECT IFNULL(MAX(sort),0) as m FROM categories')?.m ?? 0;
+  let next = maxSort + 1;
+
+  for (const cat of SEED_CATEGORIES) {
+    const have = existing.get(cat.id);
+    if (have === undefined) {
+      db.runSync(
+        'INSERT INTO categories (id,name,icon,color,kind,keywords,sort,archived) VALUES (?,?,?,?,?,?,?,0)',
+        [cat.id, cat.name, cat.icon, cat.color, cat.kind, cat.keywords.join('|'), next++]
+      );
+      continue;
+    }
+    const merged = new Set([...have.split('|').filter(Boolean), ...cat.keywords]);
+    if (merged.size !== have.split('|').filter(Boolean).length) {
+      db.runSync('UPDATE categories SET keywords=? WHERE id=?', [[...merged].join('|'), cat.id]);
+    }
+  }
 }
 
 /**
@@ -263,6 +308,7 @@ export type NewTxn = {
   raw_input?: string | null;
   source?: TxnSource;
   confidence?: number;
+  reimbursable?: boolean;
 };
 
 export function insertTxn(t: NewTxn): string {
@@ -270,8 +316,8 @@ export function insertTxn(t: NewTxn): string {
   const ts = nowIso();
   db.runSync(
     `INSERT INTO transactions
-     (id,amount_minor,type,category_id,account_id,method,occurred_at,local_date,note,raw_input,source,confidence,created_at,updated_at,deleted_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)`,
+     (id,amount_minor,type,category_id,account_id,method,occurred_at,local_date,note,raw_input,source,confidence,reimbursable,created_at,updated_at,deleted_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)`,
     [
       id,
       Math.round(t.amount_minor),
@@ -285,6 +331,7 @@ export function insertTxn(t: NewTxn): string {
       t.raw_input ?? null,
       t.source ?? 'chat',
       t.confidence ?? 1,
+      t.reimbursable ? 1 : 0,
       ts,
       ts,
     ]
@@ -303,9 +350,10 @@ export function updateTxn(id: string, patch: Partial<NewTxn>) {
     method: patch.method !== undefined ? patch.method : cur.method,
     local_date: patch.local_date ?? cur.local_date,
     note: patch.note !== undefined ? patch.note : cur.note,
+    reimbursable: patch.reimbursable !== undefined ? (patch.reimbursable ? 1 : 0) : cur.reimbursable,
   };
   db.runSync(
-    `UPDATE transactions SET amount_minor=?, type=?, category_id=?, account_id=?, method=?, local_date=?, occurred_at=?, note=?, updated_at=? WHERE id=?`,
+    `UPDATE transactions SET amount_minor=?, type=?, category_id=?, account_id=?, method=?, local_date=?, occurred_at=?, note=?, reimbursable=?, updated_at=? WHERE id=?`,
     [
       Math.round(next.amount_minor),
       next.type,
@@ -315,6 +363,7 @@ export function updateTxn(id: string, patch: Partial<NewTxn>) {
       next.local_date,
       new Date(`${next.local_date}T12:00:00`).toISOString(),
       next.note,
+      next.reimbursable,
       nowIso(),
       id,
     ]
@@ -457,6 +506,28 @@ export const topNotes = (from: string, to: string, limit = 6) =>
      GROUP BY LOWER(TRIM(note)) HAVING count >= 1 ORDER BY total DESC LIMIT ?`,
     [from, to, limit]
   );
+
+/* ------------------------------------------------------------------ */
+/* reimbursements                                                      */
+/* ------------------------------------------------------------------ */
+
+/** Expenses flagged as coming back, that have not been settled yet. */
+export const pendingReimbursements = (): TxnWithCategory[] =>
+  db.getAllSync<TxnWithCategory>(
+    `${TXN_SELECT} AND t.reimbursable = 1 AND t.reimbursed_at IS NULL ORDER BY t.local_date DESC`
+  );
+
+export const pendingReimbursementTotal = (): number =>
+  db.getFirstSync<{ s: number }>(
+    'SELECT IFNULL(SUM(amount_minor),0) as s FROM transactions WHERE deleted_at IS NULL AND reimbursable = 1 AND reimbursed_at IS NULL'
+  )?.s ?? 0;
+
+/** Mark it settled — the expense stays, it just stops being owed to you. */
+export const settleReimbursement = (id: string) =>
+  db.runSync('UPDATE transactions SET reimbursed_at=?, updated_at=? WHERE id=?', [nowIso(), nowIso(), id]);
+
+export const unsettleReimbursement = (id: string) =>
+  db.runSync('UPDATE transactions SET reimbursed_at=NULL, updated_at=? WHERE id=?', [nowIso(), id]);
 
 export const firstTxnDate = (): string | null =>
   db.getFirstSync<{ d: string }>(

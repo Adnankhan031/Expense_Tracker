@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native';
 
 import { deleteAlias, listAliases } from '../../src/db';
 import { parseInput } from '../../src/parser';
@@ -139,7 +139,7 @@ export default function LearnedScreen() {
                       reload();
                     }}
                   >
-                    <Ionicons name="close-circle" size={19} color={t.faint} />
+                    <X size={19} color={t.faint} />
                   </Pressable>
                 </View>
               );

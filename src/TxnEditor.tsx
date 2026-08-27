@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { CalendarDays, Check, ChevronRight } from 'lucide-react-native';
 import {
   NewTxn,
   Txn,
@@ -45,6 +45,7 @@ export function TxnEditor({
   const [method, setMethod] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const [reimbursable, setReimbursable] = useState(false);
   const [original, setOriginal] = useState<Txn | null>(null);
   const [showCat, setShowCat] = useState(false);
   const [showDate, setShowDate] = useState(false);
@@ -62,6 +63,7 @@ export function TxnEditor({
         setMethod(tx.method);
         setAccountId(tx.account_id);
         setNote(tx.note ?? '');
+        setReimbursable(!!tx.reimbursable);
       }
     } else {
       setOriginal(null);
@@ -72,6 +74,7 @@ export function TxnEditor({
       setMethod(seed?.method ?? null);
       setAccountId(seed?.account_id ?? null);
       setNote(seed?.note ?? '');
+      setReimbursable(false);
     }
   }, [visible, txnId]);
 
@@ -95,6 +98,7 @@ export function TxnEditor({
         method,
         account_id: accountId,
         note: note.trim() || null,
+        reimbursable,
       });
       tapSuccess();
       reload();
@@ -108,6 +112,7 @@ export function TxnEditor({
         method,
         account_id: accountId,
         note: note.trim() || null,
+        reimbursable,
         raw_input: seed?.raw_input ?? null,
         source: seed?.source ?? 'manual',
         confidence: 1,
@@ -170,16 +175,16 @@ export function TxnEditor({
         >
           <IconTile name={category?.icon} color={category?.color ?? '#8a9099'} size={34} />
           <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600', flex: 1 }}>{category?.name ?? 'Choose category'}</Text>
-          <Ionicons name="chevron-forward" size={18} color={t.faint} />
+          <ChevronRight size={17} color={t.faint} />
         </Pressable>
 
         <Pressable
           onPress={() => { tap(); setShowDate(true); }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: t.sunken, borderRadius: radius.md, padding: 14 }}
         >
-          <Ionicons name="calendar-outline" size={20} color={t.dim} />
+          <CalendarDays size={19} color={t.dim} />
           <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600', flex: 1 }}>{dayLabel(date)}</Text>
-          <Ionicons name="chevron-forward" size={18} color={t.faint} />
+          <ChevronRight size={17} color={t.faint} />
         </Pressable>
 
         <View style={{ flexDirection: 'row', gap: 7, flexWrap: 'wrap' }}>
@@ -217,6 +222,41 @@ export function TxnEditor({
             fontSize: 15,
           }}
         />
+
+        <Pressable
+          onPress={() => { tap(); setReimbursable((v) => !v); }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            backgroundColor: reimbursable ? t.upSoft : t.sunken,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: reimbursable ? t.up : 'transparent',
+            padding: 12,
+          }}
+        >
+          <View
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: 6,
+              borderWidth: 2,
+              borderColor: reimbursable ? t.up : t.lineStrong,
+              backgroundColor: reimbursable ? t.up : 'transparent',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {reimbursable && <Check size={13} color={t.dark ? '#04231C' : '#FFFFFF'} />}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: t.ink, fontSize: 14.5, fontWeight: '600' }}>I get this back</Text>
+            <Text style={{ color: t.dim, fontSize: 11.5, marginTop: 1 }}>
+              Reimbursable — tracked until it is paid back
+            </Text>
+          </View>
+        </Pressable>
 
         <Button title={txnId ? 'Save changes' : 'Add entry'} onPress={save} />
         {!!txnId && <Button title="Delete" variant="danger" onPress={remove} />}

@@ -15,6 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics';
 import { X } from 'lucide-react-native';
 import { radius, space, useTheme } from './theme';
+import { useKeyboardHeight } from './useKeyboard';
 import { formatMoney } from './format';
 import { useSettings } from './store';
 
@@ -325,6 +326,9 @@ export function Sheet({
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  // Sheets hold text inputs, and a Modal does not resize for the keyboard on
+  // Android — without this you cannot see what you are typing.
+  const kb = useKeyboardHeight();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={{ flex: 1, backgroundColor: '#000000A6' }} onPress={onClose} />
@@ -333,7 +337,7 @@ export function Sheet({
           backgroundColor: t.raised,
           borderTopLeftRadius: radius.xl,
           borderTopRightRadius: radius.xl,
-          paddingBottom: insets.bottom + space.lg,
+          paddingBottom: (kb > 0 ? kb + space.md : insets.bottom + space.lg),
           maxHeight: maxHeight as never,
           borderTopWidth: StyleSheet.hairlineWidth,
           borderColor: t.line,

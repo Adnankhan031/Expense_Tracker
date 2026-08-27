@@ -1,11 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { Bars, Donut, HBar, Ring } from '../../src/charts';
 import { MonthStats, buildInsights, periodStats } from '../../src/analytics';
-import { TxnWithCategory, searchTxns } from '../../src/db';
+import { TxnWithCategory, pendingReimbursements, searchTxns, settleReimbursement } from '../../src/db';
 import { useData, useSettings } from '../../src/store';
 import { cycleEndFor, cycleLabel, cycleStartingIn, currentCycle, shiftCycle } from '../../src/cycle';
 import { radius, space, useTheme } from '../../src/theme';
@@ -27,6 +27,7 @@ export default function DashboardScreen() {
   const prevCycle = shiftCycle(cycle, -1, cycleStartDay);
   const [stats, setStats] = useState<MonthStats | null>(null);
   const [recent, setRecent] = useState<TxnWithCategory[]>([]);
+  const [owed, setOwed] = useState<TxnWithCategory[]>([]);
   const [showMonth, setShowMonth] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -39,6 +40,7 @@ export default function DashboardScreen() {
     const s = periodStats(from, to, prevCycle, cycleEndFor(prevCycle, cycleStartDay));
     setStats(s);
     setRecent(searchTxns({ from: s.from, to: s.to, limit: 6 }));
+    setOwed(pendingReimbursements());
   }, [from, to, prevCycle, cycleStartDay]);
 
   useFocusEffect(
@@ -64,7 +66,7 @@ export default function DashboardScreen() {
         {/* month switcher */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.lg }}>
           <Pressable onPress={() => { tap(); setCycle(shiftCycle(cycle, -1, cycleStartDay)); }} hitSlop={14}>
-            <Ionicons name="chevron-back" size={24} color={t.dim} />
+            <ChevronLeft size={24} color={t.dim} />
           </Pressable>
           <Pressable onPress={() => { tap(); setShowMonth(true); }} style={{ flex: 1, alignItems: 'center' }}>
             <Text style={{ color: t.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 }}>{cycleLabel(cycle, cycleStartDay)}</Text>
@@ -77,7 +79,7 @@ export default function DashboardScreen() {
             hitSlop={14}
             style={{ opacity: cycle < curCycle ? 1 : 0.25 }}
           >
-            <Ionicons name="chevron-forward" size={24} color={t.dim} />
+            <ChevronRight size={24} color={t.dim} />
           </Pressable>
         </View>
 
@@ -111,11 +113,7 @@ export default function DashboardScreen() {
                   <Money minor={stats.expense} size={38} style={{ marginTop: 2 }} />
                   {stats.deltaPct !== null && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
-                      <Ionicons
-                        name={stats.deltaPct > 0 ? 'trending-up' : 'trending-down'}
-                        size={14}
-                        color={stats.deltaPct > 0 ? t.down : t.brand}
-                      />
+                      <Text style={{ color: stats.deltaPct > 0 ? t.down : t.up, fontSize: 12 }}>{stats.deltaPct > 0 ? '▲' : '▼'}</Text>
                       <Text style={{ color: stats.deltaPct > 0 ? t.down : t.brand, fontSize: 12.5, fontWeight: '700' }}>
                         {Math.abs(Math.round(stats.deltaPct))}% vs last period
                       </Text>
@@ -179,6 +177,53 @@ export default function DashboardScreen() {
                 ))}
               </View>
             </Card>
+
+            {owed.length > 0 && (
+              <>
+                <SectionTitle>Coming back to you</SectionTitle>
+                <Card>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.md }}>
+                    <Text style={{ color: t.dim, fontSize: 12.5, flex: 1 }}>
+                      {owed.length} unsettled {owed.length === 1 ? 'expense' : 'expenses'}
+                    </Text>
+                    <Money minor={owed.reduce((a, b) => a + b.amount_minor, 0)} size={18} color={t.up} />
+                  </View>
+                  {owed.map((x, i) => (
+                    <View
+                      key={x.id}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 10,
+                        paddingVertical: 9,
+                        borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
+                        borderTopColor: t.line,
+                      }}
+                    >
+                      <IconTile name={x.cat_icon} color={x.cat_color} size={30} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: t.ink, fontSize: 13.5, fontWeight: '600' }} numberOfLines={1}>
+                          {x.note || x.cat_name}
+                        </Text>
+                        <Text style={{ color: t.faint, fontSize: 11 }}>{shortDayLabel(x.local_date)}</Text>
+                      </View>
+                      <Money minor={x.amount_minor} size={13.5} />
+                      <Pressable
+                        onPress={() => { tap(); settleReimbursement(x.id); load(); }}
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                          borderRadius: radius.pill,
+                          backgroundColor: t.upSoft,
+                        }}
+                      >
+                        <Text style={{ color: t.up, fontSize: 11, fontWeight: '700' }}>Got it</Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </Card>
+              </>
+            )}
 
             {/* insights */}
             {insights.length > 0 && (

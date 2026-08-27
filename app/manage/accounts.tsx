@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native';
 
 import { Account, archiveAccount, saveAccount, searchTxns } from '../../src/db';
 import { useData } from '../../src/store';
@@ -59,7 +59,7 @@ export default function AccountsScreen() {
                   <Text style={{ color: t.faint, fontSize: 11.5, textTransform: 'capitalize', marginTop: 1 }}>{a.kind}</Text>
                 </View>
                 <Money minor={net} size={14} color={net >= 0 ? t.up : t.down} prefix={net > 0 ? '+' : ''} />
-                <Ionicons name="chevron-forward" size={17} color={t.faint} />
+                <ChevronRight size={17} color={t.faint} />
               </Pressable>
             );
           })}

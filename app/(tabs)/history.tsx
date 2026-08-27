@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
 
 import { HeatGrid } from '../../src/charts';
@@ -105,7 +105,7 @@ export default function HistoryScreen() {
             {/* month nav */}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.lg }}>
               <Pressable onPress={() => { tap(); setYm(shiftMonth(ym, -1)); setSelectedDay(null); }} hitSlop={14}>
-                <Ionicons name="chevron-back" size={24} color={t.dim} />
+                <ChevronLeft size={24} color={t.dim} />
               </Pressable>
               <Pressable onPress={() => { tap(); setShowMonth(true); }} style={{ flex: 1, alignItems: 'center' }}>
                 <Text style={{ color: t.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.5 }}>{monthLabel(ym)}</Text>
@@ -116,7 +116,7 @@ export default function HistoryScreen() {
                 hitSlop={14}
                 style={{ opacity: ym < currentMonth() ? 1 : 0.25 }}
               >
-                <Ionicons name="chevron-forward" size={24} color={t.dim} />
+                <ChevronRight size={24} color={t.dim} />
               </Pressable>
             </View>
 
@@ -152,7 +152,7 @@ export default function HistoryScreen() {
                   paddingHorizontal: 12,
                 }}
               >
-                <Ionicons name="search" size={15} color={t.faint} />
+                <Search size={15} color={t.faint} />
                 <TextInput
                   value={q}
                   onChangeText={setQ}
@@ -162,7 +162,7 @@ export default function HistoryScreen() {
                 />
                 {!!q && (
                   <Pressable onPress={() => setQ('')} hitSlop={8}>
-                    <Ionicons name="close-circle" size={16} color={t.faint} />
+                    <X size={16} color={t.faint} />
                   </Pressable>
                 )}
               </View>

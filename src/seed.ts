@@ -8,9 +8,12 @@ export type SeedCategory = {
 };
 
 /**
- * Seed categories double as the parser's starting dictionary. Every keyword is a
- * word the user might actually type; the alias table takes over from here as the
- * user corrects things.
+ * Seed categories double as the parser's dictionary.
+ *
+ * Keywords are the *things people buy*, not just category names — "face wash"
+ * and "curd" are what actually gets typed, and matching only on "toiletries" or
+ * "groceries" is why those fell through to Other. Merchant names matter for the
+ * same reason: a shop name is often the only word in the line.
  */
 export const SEED_CATEGORIES: SeedCategory[] = [
   {
@@ -21,11 +24,23 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     kind: 'expense',
     keywords: [
       'food', 'lunch', 'dinner', 'breakfast', 'brunch', 'snack', 'snacks', 'meal', 'meals',
-      'restaurant', 'hotel', 'cafe', 'coffee', 'tea', 'chai', 'juice', 'shake', 'icecream',
-      'ice cream', 'pizza', 'burger', 'biryani', 'dosa', 'idli', 'samosa', 'roll', 'shawarma',
-      'swiggy', 'zomato', 'zom', 'ubereats', 'dominos', 'kfc', 'mcdonalds', 'mcd', 'subway',
-      'starbucks', 'ccd', 'chaipoint', 'eat', 'eating', 'ate', 'canteen', 'mess', 'tiffin',
-      'juice shop', 'bakery', 'sweets', 'dessert', 'drinks', 'beer', 'bar', 'takeaway',
+      'eat', 'eating', 'ate', 'restaurant', 'cafe', 'canteen', 'mess', 'tiffin', 'takeaway',
+      'takeout', 'bento',
+      'pizza', 'burger', 'biryani', 'dosa', 'idli', 'samosa', 'roll', 'shawarma', 'sandwich',
+      'noodles', 'ramen', 'udon', 'soba', 'sushi', 'sashimi', 'donburi', 'gyudon', 'katsu',
+      'tempura', 'curry', 'onigiri', 'gyoza', 'yakitori', 'okonomiyaki', 'takoyaki',
+      'salad', 'soup', 'pasta', 'fried chicken', 'karaage',
+      'coffee', 'tea', 'chai', 'juice', 'shake', 'smoothie', 'latte', 'espresso', 'matcha',
+      'beer', 'wine', 'sake', 'highball', 'chuhai', 'drinks', 'bar', 'izakaya', 'nomikai',
+      'soda', 'cola',
+      'icecream', 'ice cream', 'dessert', 'cake', 'sweets', 'bakery', 'donut', 'pudding', 'crepe',
+      'swiggy', 'zomato', 'zom', 'dominos', 'kfc', 'mcdonalds', 'mcd', 'subway', 'starbucks',
+      'ccd', 'chaipoint', 'ubereats',
+      'saizeriya', 'saizeria', 'sukiya', 'yoshinoya', 'matsuya', 'ichiran', 'coco ichibanya',
+      'cocoichi', 'sushiro', 'kura sushi', 'hamazushi', 'mos burger', 'mosburger', 'freshness',
+      'ootoya', 'tenya', 'gusto', 'jonathans', 'dennys', 'ringer hut', 'ippudo',
+      'doutor', 'tullys', 'komeda', 'excelsior', 'veloce', 'st marc', 'mister donut', 'misdo',
+      'baskin robbins', 'krispy kreme', 'lotteria', 'first kitchen',
     ],
   },
   {
@@ -35,10 +50,55 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     color: '#81C784',
     kind: 'expense',
     keywords: [
-      'grocery', 'groceries', 'vegetables', 'veggies', 'sabzi', 'fruits', 'milk', 'bread',
-      'eggs', 'rice', 'atta', 'flour', 'dal', 'oil', 'supermarket', 'kirana', 'provision',
+      'grocery', 'groceries', 'supermarket', 'kirana', 'provision', 'ration', 'market',
+      'vegetables', 'veggies', 'sabzi', 'fruits', 'fruit', 'milk', 'bread', 'eggs', 'egg',
+      'rice', 'atta', 'flour', 'dal', 'lentils', 'oil', 'sugar', 'salt', 'spices', 'masala',
+      'curd', 'yogurt', 'yoghurt', 'cheese', 'butter', 'paneer', 'tofu', 'natto', 'miso',
+      'soy sauce', 'cereal', 'oats', 'honey', 'jam', 'ketchup',
+      'chicken', 'meat', 'beef', 'pork', 'fish', 'seafood', 'prawns', 'frozen food',
+      'onion', 'potato', 'tomato', 'banana', 'apple', 'orange', 'grapes',
+      'lawson', 'familymart', 'family mart', 'famima', '7-eleven', 'seven eleven',
+      'seveneleven', '7eleven', 'ministop', 'seicomart', 'daily yamazaki', 'combini', 'konbini',
+      'gyoumu', 'gyomu', 'gyomu super', 'gyoumu super', 'gyomusuper', 'giyoumu', 'ok store',
+      'okstore', 'maruetsu', 'summit', 'aeon', 'ito yokado', 'seiyu', 'life super', 'hanamasa',
+      'inageya', 'yaoko', 'tokyu store', 'kaldi',
       'bigbasket', 'blinkit', 'zepto', 'instamart', 'dmart', 'd mart', 'reliance fresh',
-      'more', 'grofers', 'jiomart', 'ration', 'household', 'detergent', 'soap',
+      'grofers', 'jiomart',
+    ],
+  },
+  {
+    id: 'toiletries',
+    name: 'Toiletries',
+    icon: 'droplet',
+    color: '#4DD0E1',
+    kind: 'expense',
+    keywords: [
+      'toiletries', 'face wash', 'facewash', 'body wash', 'bodywash', 'shower gel', 'soap',
+      'shampoo', 'conditioner', 'hair oil', 'toothpaste', 'toothbrush', 'mouthwash', 'floss',
+      'razor', 'shaving', 'shaving cream', 'deodorant', 'perfume', 'body lotion', 'lotion',
+      'moisturizer', 'moisturiser', 'face cream', 'sunscreen', 'sunblock', 'lip balm',
+      'cotton', 'tissue', 'tissues', 'toilet paper', 'wet wipes', 'wipes', 'sanitizer',
+      'sanitary pads', 'tampons', 'diaper', 'diapers', 'nail cutter', 'hair gel',
+      'face mask', 'serum', 'toner', 'cleanser', 'skincare', 'cosmetics', 'makeup',
+      'matsumoto kiyoshi', 'matsumoto', 'matsukiyo', 'kiyoshi', 'kyoshi', 'kyoushi',
+      'welcia', 'sugi', 'tsuruha', 'cosmos', 'sundrug', 'sun drug', 'create sd', 'kokumin',
+      'drugstore', 'drug store', 'nykaa', 'purplle',
+    ],
+  },
+  {
+    id: 'household',
+    name: 'Household',
+    icon: 'house',
+    color: '#A1887F',
+    kind: 'expense',
+    keywords: [
+      'household', 'detergent', 'laundry liquid', 'fabric softener', 'dish soap', 'dishwash',
+      'cleaner', 'cleaning', 'bleach', 'sponge', 'garbage bag', 'trash bag', 'bin bag',
+      'kitchen', 'utensils', 'plates', 'cups', 'cutlery', 'pan', 'pot', 'storage box',
+      'hanger', 'hangers', 'bulb', 'battery', 'batteries', 'extension cord', 'furniture',
+      'mattress', 'bedsheet', 'pillow', 'blanket', 'curtain', 'towel', 'doormat', 'decor',
+      'nitori', 'ikea', 'daiso', 'seria', 'can do', 'cando', 'don quijote', 'donki',
+      'homecenter', 'home center', 'cainz', 'komeri',
     ],
   },
   {
@@ -49,8 +109,11 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     kind: 'expense',
     keywords: [
       'transport', 'auto', 'rickshaw', 'cab', 'taxi', 'uber', 'ola', 'rapido', 'bus',
-      'metro', 'train', 'ticket', 'railway', 'irctc', 'toll', 'parking', 'travel local',
-      'commute', 'ride', 'namma yatri', 'blusmart', 'sharing', 'bike taxi',
+      'metro', 'train', 'ticket', 'railway', 'irctc', 'toll', 'parking', 'commute', 'ride',
+      'fare', 'namma yatri', 'blusmart', 'bike taxi',
+      'jr', 'jr pass', 'suica', 'pasmo', 'icoca', 'shinkansen', 'toei', 'keio', 'odakyu',
+      'tobu', 'seibu', 'keikyu', 'tokyu', 'yamanote', 'metro pass', 'teiki', 'commuter pass',
+      'ic charge', 'charge suica', 'charge pasmo',
     ],
   },
   {
@@ -59,7 +122,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     icon: 'fuel',
     color: '#FFB74D',
     kind: 'expense',
-    keywords: ['fuel', 'petrol', 'diesel', 'gas station', 'cng', 'refuel', 'tank', 'hp petrol', 'indian oil', 'bunk'],
+    keywords: ['fuel', 'petrol', 'diesel', 'gasoline', 'gas station', 'cng', 'refuel', 'eneos', 'idemitsu', 'bunk'],
   },
   {
     id: 'bills',
@@ -68,18 +131,34 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     color: '#7986CB',
     kind: 'expense',
     keywords: [
-      'bill', 'bills', 'electricity', 'current bill', 'power', 'water', 'gas bill', 'cylinder',
-      'lpg', 'internet', 'wifi', 'broadband', 'airtel', 'jio', 'vi', 'vodafone', 'bsnl',
-      'recharge', 'mobile', 'phone bill', 'dth', 'cable', 'maintenance', 'utility',
+      'bill', 'bills', 'utility', 'utilities', 'electricity', 'current bill', 'current gas',
+      'power', 'denki', 'water', 'suido', 'water bill', 'gas bill', 'gas', 'city gas',
+      'cylinder', 'lpg', 'maintenance', 'society', 'nhk', 'tepco', 'tokyo gas', 'kepco',
+    ],
+  },
+  {
+    id: 'mobile',
+    name: 'Phone & Internet',
+    icon: 'wifi',
+    color: '#64B5F6',
+    kind: 'expense',
+    keywords: [
+      'internet', 'wifi', 'broadband', 'fiber', 'phone bill', 'mobile bill', 'recharge',
+      'data pack', 'sim', 'docomo', 'au', 'softbank', 'rakuten mobile', 'ymobile', 'y mobile',
+      'uq mobile', 'ahamo', 'povo', 'linemo', 'nuro', 'airtel', 'jio', 'vi', 'vodafone',
+      'bsnl', 'dth', 'cable',
     ],
   },
   {
     id: 'rent',
-    name: 'Rent',
-    icon: 'house',
-    color: '#A1887F',
+    name: 'Rent & Housing',
+    icon: 'building',
+    color: '#8D6E63',
     kind: 'expense',
-    keywords: ['rent', 'house rent', 'room rent', 'pg', 'hostel', 'deposit', 'landlord', 'lease'],
+    keywords: [
+      'rent', 'house rent', 'room rent', 'yachin', 'pg', 'hostel', 'deposit', 'landlord',
+      'lease', 'shikikin', 'reikin', 'key money', 'renewal fee', 'management fee', 'apartment',
+    ],
   },
   {
     id: 'shopping',
@@ -88,35 +167,85 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     color: '#BA68C8',
     kind: 'expense',
     keywords: [
-      'shopping', 'clothes', 'clothing', 'shirt', 'tshirt', 'jeans', 'shoes', 'sandals',
-      'dress', 'amazon', 'flipkart', 'myntra', 'ajio', 'meesho', 'nykaa', 'bag', 'watch',
-      'electronics', 'gadget', 'mobile phone', 'laptop', 'headphones', 'earphones',
-      'accessories', 'furniture', 'decor', 'ikea', 'purchase',
+      'shopping', 'bought', 'purchase', 'bag', 'watch', 'accessories', 'sunglasses', 'wallet',
+      'jewellery', 'jewelry', 'amazon', 'rakuten', 'mercari', 'flipkart', 'myntra', 'ajio',
+      'meesho', 'shein', 'temu', 'yahoo shopping',
+    ],
+  },
+  {
+    id: 'clothing',
+    name: 'Clothing',
+    icon: 'shirt',
+    color: '#F06292',
+    kind: 'expense',
+    keywords: [
+      'clothes', 'clothing', 'shirt', 'tshirt', 't-shirt', 'jeans', 'trousers', 'pants',
+      'jacket', 'coat', 'hoodie', 'sweater', 'dress', 'skirt', 'socks', 'innerwear',
+      'underwear', 'shoes', 'sneakers', 'sandals', 'boots', 'cap', 'belt', 'scarf',
+      'uniqlo', 'gu', 'muji', 'zara', 'shimamura', 'workman', 'abc mart',
+    ],
+  },
+  {
+    id: 'electronics',
+    name: 'Electronics',
+    icon: 'phone',
+    color: '#7E57C2',
+    kind: 'expense',
+    keywords: [
+      'electronics', 'gadget', 'mobile phone', 'smartphone', 'laptop', 'tablet', 'ipad',
+      'headphones', 'earphones', 'earbuds', 'airpods', 'charger', 'power bank', 'keyboard',
+      'mouse', 'monitor', 'ssd', 'hard disk', 'memory card', 'camera', 'printer',
+      'yodobashi', 'bic camera', 'biccamera', 'yamada denki', 'edion', 'kojima', 'apple store',
     ],
   },
   {
     id: 'health',
-    name: 'Health',
+    name: 'Health & Medical',
     icon: 'stethoscope',
     color: '#4DB6AC',
     kind: 'expense',
     keywords: [
-      'health', 'medical', 'medicine', 'medicines', 'meds', 'pharmacy', 'chemist', 'doctor',
-      'clinic', 'hospital', 'checkup', 'test', 'lab', 'scan', 'dentist', 'dental', 'therapy',
-      'apollo', 'pharmeasy', 'tata 1mg', '1mg', 'netmeds', 'insurance health', 'surgery',
-      'vaccine', 'physio', 'eye', 'spectacles', 'glasses',
+      'health', 'medical', 'medicine', 'medicines', 'meds', 'tablets', 'pharmacy', 'chemist',
+      'doctor', 'clinic', 'hospital', 'checkup', 'blood test', 'lab', 'scan', 'x-ray',
+      'dentist', 'dental', 'therapy', 'counselling', 'surgery', 'vaccine', 'injection',
+      'physio', 'eye test', 'spectacles', 'glasses', 'contact lens', 'painkiller',
+      'byouin', 'apollo', 'pharmeasy', '1mg', 'netmeds',
+    ],
+  },
+  {
+    id: 'fitness',
+    name: 'Fitness',
+    icon: 'dumbbell',
+    color: '#66BB6A',
+    kind: 'expense',
+    keywords: [
+      'gym', 'fitness', 'workout', 'yoga', 'pilates', 'swimming', 'sports', 'protein',
+      'supplements', 'trainer', 'anytime fitness', 'chocozap', 'sports club',
+    ],
+  },
+  {
+    id: 'personal',
+    name: 'Personal Care',
+    icon: 'scissors',
+    color: '#FF7043',
+    kind: 'expense',
+    keywords: [
+      'salon', 'haircut', 'hair', 'barber', 'spa', 'massage', 'grooming', 'beauty', 'parlour',
+      'parlor', 'nail', 'manicure', 'pedicure', 'facial', 'waxing', 'laundry', 'dry clean',
+      'ironing', 'qb house', 'qbhouse', 'coin laundry',
     ],
   },
   {
     id: 'entertainment',
     name: 'Entertainment',
     icon: 'film',
-    color: '#F06292',
+    color: '#EC407A',
     kind: 'expense',
     keywords: [
-      'entertainment', 'movie', 'movies', 'cinema', 'pvr', 'inox', 'bookmyshow', 'concert',
-      'game', 'games', 'gaming', 'outing', 'party', 'club', 'fun', 'amusement', 'bowling',
-      'zoo', 'museum', 'event', 'show',
+      'entertainment', 'movie', 'movies', 'cinema', 'pvr', 'inox', 'bookmyshow', 'toho cinemas',
+      'concert', 'gig', 'show', 'event', 'game', 'games', 'gaming', 'arcade', 'karaoke',
+      'outing', 'party', 'club', 'bowling', 'zoo', 'museum', 'aquarium', 'theme park',
+      'disney', 'usj', 'pachinko', 'book', 'books', 'manga', 'comic',
     ],
   },
   {
@@ -126,22 +255,26 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     color: '#9575CD',
     kind: 'expense',
     keywords: [
-      'subscription', 'netflix', 'prime', 'spotify', 'youtube premium', 'hotstar', 'jiocinema',
-      'sony liv', 'zee5', 'icloud', 'google one', 'chatgpt', 'claude', 'notion', 'canva',
-      'adobe', 'gym membership', 'membership', 'saas', 'renewal',
+      'subscription', 'subscriptions', 'membership', 'renewal', 'saas',
+      'netflix', 'prime', 'amazon prime', 'spotify', 'youtube premium', 'youtube', 'hotstar',
+      'jiocinema', 'sony liv', 'zee5', 'disney plus', 'hulu', 'abema', 'unext', 'dazn',
+      'icloud', 'google one', 'dropbox', 'chatgpt', 'openai', 'claude', 'anthropic',
+      'ai subscription', 'copilot', 'midjourney', 'notion', 'canva', 'adobe', 'figma',
+      'github', 'apple music', 'kindle unlimited', 'audible',
     ],
   },
   {
     id: 'travel',
     name: 'Travel & Tour',
     icon: 'plane',
-    color: '#64B5F6',
+    color: '#26C6DA',
     kind: 'expense',
     keywords: [
       'travel', 'tour', 'trip', 'flight', 'flights', 'airfare', 'airport', 'holiday',
-      'vacation', 'hotel stay', 'stay', 'resort', 'airbnb', 'oyo', 'makemytrip', 'goibibo',
-      'booking', 'visa', 'passport', 'sightseeing', 'tourism', 'excursion', 'road trip',
-      'luggage', 'homestay',
+      'vacation', 'hotel', 'stay', 'resort', 'ryokan', 'airbnb', 'oyo',
+      'makemytrip', 'goibibo', 'booking', 'agoda', 'expedia', 'jalan', 'rakuten travel',
+      'visa fee', 'passport', 'sightseeing', 'tourism', 'excursion', 'road trip', 'luggage',
+      'souvenir', 'omiyage',
     ],
   },
   {
@@ -152,20 +285,20 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     kind: 'expense',
     keywords: [
       'education', 'course', 'courses', 'class', 'classes', 'tuition', 'fees', 'fee',
-      'college', 'school', 'exam', 'books', 'book', 'stationery', 'udemy', 'coursera',
-      'certification', 'training', 'coaching', 'notebook', 'pen',
+      'college', 'school', 'university', 'exam', 'textbook', 'textbooks', 'stationery',
+      'notebook', 'pen', 'udemy', 'coursera', 'certification', 'training', 'coaching',
+      'japanese class', 'jlpt', 'language school',
     ],
   },
   {
-    id: 'personal',
-    name: 'Personal Care',
-    icon: 'scissors',
-    color: '#FF7043',
+    id: 'work',
+    name: 'Work Expenses',
+    icon: 'briefcase',
+    color: '#78909C',
     kind: 'expense',
     keywords: [
-      'personal care', 'salon', 'haircut', 'hair', 'barber', 'spa', 'grooming', 'cosmetics',
-      'skincare', 'shampoo', 'gym', 'fitness', 'yoga', 'massage', 'beauty', 'parlour',
-      'parlor', 'laundry', 'dry clean', 'ironing',
+      'work expense', 'office', 'business trip', 'coworking', 'printing', 'business card',
+      'meishi', 'conference', 'seminar', 'team lunch',
     ],
   },
   {
@@ -176,19 +309,8 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     kind: 'expense',
     keywords: [
       'gift', 'gifts', 'present', 'donation', 'donate', 'charity', 'temple', 'church',
-      'mosque', 'offering', 'wedding gift', 'birthday gift', 'tip', 'shagun',
-    ],
-  },
-  {
-    id: 'unexpected',
-    name: 'Unexpected',
-    icon: 'alert',
-    color: '#FFD54F',
-    kind: 'expense',
-    keywords: [
-      'unexpected', 'emergency', 'repair', 'repairs', 'fine', 'penalty', 'challan', 'damage',
-      'breakdown', 'replacement', 'urgent', 'accident', 'loss', 'service charge', 'servicing',
-      'puncture', 'mechanic', 'plumber', 'electrician',
+      'mosque', 'offering', 'wedding gift', 'birthday gift', 'tip', 'shagun', 'goshugi',
+      'otoshidama', 'flowers',
     ],
   },
   {
@@ -198,20 +320,72 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     color: '#90A4AE',
     kind: 'expense',
     keywords: [
-      'family', 'kids', 'children', 'child', 'baby', 'diapers', 'toys',
-      'parents', 'mom', 'dad', 'home', 'wife', 'husband', 'pocket money', 'helper', 'maid',
+      'family', 'kids', 'children', 'child', 'baby', 'toys', 'toy', 'stroller', 'daycare',
+      'nursery', 'wife', 'husband', 'partner', 'pocket money', 'helper', 'maid', 'babysitter',
+    ],
+  },
+  {
+    id: 'parents',
+    name: 'Family Support',
+    icon: 'heart',
+    color: '#F48FB1',
+    kind: 'expense',
+    keywords: [
+      'sent parents', 'sent to parents', 'parents', 'mom', 'mother', 'dad', 'father', 'amma',
+      'appa', 'home money', 'sent home', 'family support', 'remittance', 'send home',
+      'money to parents', 'support family', 'transfer home',
+    ],
+  },
+  {
+    id: 'pets',
+    name: 'Pets',
+    icon: 'dog',
+    color: '#FFB300',
+    kind: 'expense',
+    keywords: ['pet', 'pets', 'dog', 'cat', 'pet food', 'dog food', 'cat food', 'vet', 'litter'],
+  },
+  {
+    id: 'insurance',
+    name: 'Insurance',
+    icon: 'star',
+    color: '#5C6BC0',
+    kind: 'expense',
+    keywords: ['insurance', 'premium', 'lic', 'health insurance', 'life insurance', 'car insurance', 'hoken'],
+  },
+  {
+    id: 'taxes',
+    name: 'Taxes & Fees',
+    icon: 'receipt',
+    color: '#795548',
+    kind: 'expense',
+    keywords: [
+      'tax', 'taxes', 'income tax', 'residence tax', 'juminzei', 'nenkin', 'pension',
+      'fine', 'penalty', 'challan', 'late fee', 'bank charge', 'service charge', 'atm fee',
+      'transfer fee',
+    ],
+  },
+  {
+    id: 'unexpected',
+    name: 'Unexpected',
+    icon: 'alert',
+    color: '#FFD54F',
+    kind: 'expense',
+    keywords: [
+      'unexpected', 'emergency', 'repair', 'repairs', 'damage', 'breakdown', 'replacement',
+      'urgent', 'accident', 'servicing', 'puncture', 'mechanic', 'plumber', 'electrician',
+      'locksmith',
     ],
   },
   {
     id: 'investments',
     name: 'Investments & Savings',
     icon: 'trending',
-    color: '#4DB6AC',
+    color: '#26A69A',
     kind: 'expense',
     keywords: [
       'investment', 'invest', 'sip', 'mutual fund', 'mf', 'stocks', 'shares', 'equity',
-      'gold', 'fd', 'rd', 'ppf', 'nps', 'crypto', 'savings', 'zerodha', 'groww', 'upstox',
-      'insurance', 'premium', 'lic',
+      'gold', 'fd', 'rd', 'ppf', 'nps', 'crypto', 'bitcoin', 'savings', 'nisa', 'ideco',
+      'zerodha', 'groww', 'upstox',
     ],
   },
   {
@@ -220,7 +394,24 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     icon: 'bank',
     color: '#9575CD',
     kind: 'expense',
-    keywords: ['loan', 'emi', 'installment', 'instalment', 'credit card bill', 'repayment', 'interest paid', 'borrowed return'],
+    keywords: [
+      'loan', 'emi', 'installment', 'instalment', 'credit card bill', 'repayment',
+      'interest paid', 'home loan', 'car loan', 'education loan', 'shakkin',
+    ],
+  },
+  {
+    id: 'lending',
+    name: 'Lending & Borrowing',
+    icon: 'undo',
+    color: '#FFA726',
+    kind: 'expense',
+    keywords: [
+      'lent', 'lend', 'loan to a friend', 'loan to friend', 'lent to friend', 'gave friend',
+      'loan friend', 'friend loan', 'lent friend', 'borrowed friend', 'paid friend',
+      'loan from friend', 'loan friend money',
+      'borrowed', 'borrow', 'paid back', 'returned money', 'settle up', 'owe', 'owed',
+      'friend money', 'split bill', 'shared bill', 'friend',
+    ],
   },
   {
     id: 'other',
@@ -231,14 +422,14 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     keywords: ['other', 'misc', 'miscellaneous', 'random', 'general', 'uncategorised', 'uncategorized'],
   },
 
-  // ---- income ----
+  /* ------------------------------- income ------------------------------- */
   {
     id: 'salary',
     name: 'Salary',
     icon: 'wallet',
-    color: '#3DDC97',
+    color: '#2DD4A7',
     kind: 'income',
-    keywords: ['salary', 'sal', 'paycheck', 'pay', 'stipend', 'wages', 'monthly salary'],
+    keywords: ['salary', 'sal', 'paycheck', 'pay', 'stipend', 'wages', 'monthly salary', 'kyuuryou'],
   },
   {
     id: 'freelance',
@@ -246,7 +437,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     icon: 'briefcase',
     color: '#4FC3F7',
     kind: 'income',
-    keywords: ['freelance', 'freelancing', 'client', 'project payment', 'business', 'sales', 'profit', 'consulting', 'gig'],
+    keywords: ['freelance', 'freelancing', 'client payment', 'project payment', 'business', 'sales', 'profit', 'consulting', 'gig', 'side income'],
   },
   {
     id: 'returns',
@@ -254,7 +445,15 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     icon: 'coins',
     color: '#FFD54F',
     kind: 'income',
-    keywords: ['interest', 'dividend', 'returns', 'matured', 'capital gain', 'cashback', 'reward'],
+    keywords: ['interest', 'dividend', 'returns', 'matured', 'capital gain', 'cashback', 'reward', 'points'],
+  },
+  {
+    id: 'reimbursement',
+    name: 'Reimbursements',
+    icon: 'undo',
+    color: '#66BB6A',
+    kind: 'income',
+    keywords: ['reimbursed', 'reimbursement', 'claim settled', 'expense claim', 'company paid back', 'got back', 'money returned'],
   },
   {
     id: 'refund',
@@ -262,7 +461,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     icon: 'undo',
     color: '#81C784',
     kind: 'income',
-    keywords: ['refund', 'refunded', 'returned money', 'reimbursement', 'reimbursed', 'settled'],
+    keywords: ['refund', 'refunded', 'cancelled order', 'chargeback'],
   },
   {
     id: 'other_income',
@@ -270,7 +469,7 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     icon: 'sparkles',
     color: '#BA68C8',
     kind: 'income',
-    keywords: ['other income', 'gift received', 'bonus', 'prize', 'won', 'received', 'credited', 'income'],
+    keywords: ['other income', 'gift received', 'prize', 'won', 'received', 'credited', 'income', 'furusato'],
   },
 ];
 
@@ -278,7 +477,7 @@ export const SEED_ACCOUNTS = [
   { id: 'cash', name: 'Cash', kind: 'cash', icon: 'note' },
   { id: 'bank', name: 'Bank', kind: 'bank', icon: 'bank' },
   { id: 'card', name: 'Card', kind: 'card', icon: 'card' },
-  { id: 'wallet', name: 'Wallet / UPI', kind: 'wallet', icon: 'phone' },
+  { id: 'wallet', name: 'Wallet / IC', kind: 'wallet', icon: 'wallet' },
 ];
 
 /** Payment-method words the parser strips out of a line. */
@@ -300,4 +499,7 @@ export const METHOD_WORDS: Record<string, string> = {
   neft: 'Bank',
   imps: 'Bank',
   wallet: 'Wallet',
+  paypay: 'Wallet',
+  'rakuten pay': 'Wallet',
+  'line pay': 'Wallet',
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 import * as Updates from 'expo-updates';
 import * as Sharing from 'expo-sharing';
@@ -120,7 +120,7 @@ export default function SettingsScreen() {
         <Card onPress={() => router.push('/manual')}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
             <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: t.brandSoft, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="time-outline" size={22} color={t.brand} />
+              <ChevronRight size={22} color={t.brand} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: t.ink, fontSize: 15.5, fontWeight: '700' }}>Add by day, week or month</Text>
@@ -128,7 +128,7 @@ export default function SettingsScreen() {
                 Full manual control for any date - including months from before you started.
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={t.faint} />
+            <ChevronRight size={18} color={t.faint} />
           </View>
         </Card>
 
@@ -292,34 +292,34 @@ export default function SettingsScreen() {
         <SectionTitle>Manage</SectionTitle>
         <Card>
           <Row
-            left={<Ionicons name="pricetags-outline" size={20} color={t.dim} />}
+            left={<ChevronRight size={20} color={t.dim} />}
             title="Categories"
             subtitle="Add, rename, recolour, or hide"
-            right={<Ionicons name="chevron-forward" size={17} color={t.faint} />}
+            right={<ChevronRight size={17} color={t.faint} />}
             onPress={() => router.push('/manage/categories')}
           />
           <Divider />
           <Row
-            left={<Ionicons name="speedometer-outline" size={20} color={t.dim} />}
+            left={<ChevronRight size={20} color={t.dim} />}
             title="Budgets"
             subtitle="Monthly caps overall and per category"
-            right={<Ionicons name="chevron-forward" size={17} color={t.faint} />}
+            right={<ChevronRight size={17} color={t.faint} />}
             onPress={() => router.push('/manage/budgets')}
           />
           <Divider />
           <Row
-            left={<Ionicons name="wallet-outline" size={20} color={t.dim} />}
+            left={<ChevronRight size={20} color={t.dim} />}
             title="Accounts"
             subtitle="Cash, bank, card, wallet"
-            right={<Ionicons name="chevron-forward" size={17} color={t.faint} />}
+            right={<ChevronRight size={17} color={t.faint} />}
             onPress={() => router.push('/manage/accounts')}
           />
           <Divider />
           <Row
-            left={<Ionicons name="sparkles-outline" size={20} color={t.dim} />}
+            left={<ChevronRight size={20} color={t.dim} />}
             title="Learned words"
             subtitle={`${aliasCount} words mapped to categories`}
-            right={<Ionicons name="chevron-forward" size={17} color={t.faint} />}
+            right={<ChevronRight size={17} color={t.faint} />}
             onPress={() => router.push('/manage/learned')}
           />
         </Card>
@@ -328,14 +328,14 @@ export default function SettingsScreen() {
         <SectionTitle>Data</SectionTitle>
         <Card>
           <Row
-            left={<Ionicons name="download-outline" size={20} color={t.dim} />}
+            left={<ChevronRight size={20} color={t.dim} />}
             title="Export as CSV"
             subtitle="Share every entry as a spreadsheet"
             onPress={exportCsv}
           />
           <Divider />
           <Row
-            left={<Ionicons name="chatbubbles-outline" size={20} color={t.dim} />}
+            left={<ChevronRight size={20} color={t.dim} />}
             title="Clear chat history"
             subtitle="Keeps all transactions, empties the thread"
             onPress={() => {
@@ -345,7 +345,7 @@ export default function SettingsScreen() {
           />
           <Divider />
           <Row
-            left={<Ionicons name="trash-outline" size={20} color={t.down} />}
+            left={<ChevronRight size={20} color={t.down} />}
             title="Delete all data"
             subtitle="Cannot be undone"
             danger
@@ -357,7 +357,7 @@ export default function SettingsScreen() {
         <SectionTitle>App</SectionTitle>
         <Card>
           <Row
-            left={<Ionicons name="cloud-download-outline" size={20} color={t.dim} />}
+            left={<ChevronRight size={20} color={t.dim} />}
             title="Check for updates"
             subtitle={updateMsg ?? 'New versions install over the air — no reinstall needed'}
             onPress={checkUpdate}

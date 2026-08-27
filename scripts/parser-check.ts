@@ -49,8 +49,15 @@ const cases: [string, Expect][] = [
   ['grocries 800', { cat: 'groceries', amount: 80000 }], // typo → fuzzy
   ['day before yesterday lunch 220', { cat: 'food', amount: 22000, date: addDays(today, -2) }],
   ['refund 1200', { cat: 'refund', amount: 120000, type: 'income' }],
-  ['gym 1500 gpay', { cat: 'personal', amount: 150000, method: 'UPI' }],
+  ['gym 1500 gpay', { cat: 'fitness', amount: 150000, method: 'UPI' }],
   ['school fees 25000', { cat: 'education', amount: 2500000 }],
+  // a scale suffix must be a whole word: the "l" in lawson is not lakh
+  ['juice 135 lawson', { cat: 'food', amount: 13500 }],
+  ['face wash 2644 matsumoto kyoushi', { cat: 'toiletries', amount: 264400 }],
+  ['curd 135', { cat: 'groceries', amount: 13500 }],
+  ['loan to a friend 5000', { cat: 'lending', amount: 500000 }],
+  ['151000 sent to parents', { cat: 'parents', amount: 15100000 }],
+  ['2 lakh deposit', { cat: 'rent', amount: 20000000 }],
 ];
 
 let pass = 0;
