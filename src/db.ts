@@ -2,6 +2,7 @@ import * as SQLite from 'expo-sqlite';
 import { SEED_ACCOUNTS, SEED_CATEGORIES } from './seed';
 import { ICON_MAP, resolveIconName } from './icons';
 import { isUuid, uuid } from './uuid';
+import { fromLocalDate, toLocalDate } from './format';
 
 export const db = SQLite.openDatabaseSync('spendly.db');
 
@@ -47,6 +48,34 @@ export type Txn = {
 export type TxnWithCategory = Txn & { cat_name: string; cat_icon: string; cat_color: string };
 
 export type Budget = { id: string; category_id: string | null; amount_minor: number; created_at: string };
+
+/**
+ * Something you know is coming: next month's rent, a pass you buy on the 1st,
+ * a yearly renewal.
+ *
+ * Deliberately not a transaction. Nothing is counted as spent until it actually
+ * happens — a commitment is a reminder that turns into a real entry the day you
+ * confirm it. Recurring ones roll their due date forward instead of being
+ * recreated, so there is only ever one row per obligation.
+ */
+export type Recurrence = 'once' | 'weekly' | 'monthly' | 'yearly';
+
+export type Commitment = {
+  id: string;
+  name: string;
+  amount_minor: number;
+  category_id: string | null;
+  due_date: string;
+  recurrence: Recurrence;
+  method: string | null;
+  note: string | null;
+  archived: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
+export type CommitmentView = Commitment & { cat_name: string; cat_icon: string; cat_color: string };
 
 export type ChatMessage = {
   id: string;
@@ -154,6 +183,28 @@ export function initDb() {
   if (version < 3) {
     migrateToUuids();
     db.execSync('PRAGMA user_version = 3');
+  }
+
+  if (version < 4) {
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS commitments (
+        id TEXT PRIMARY KEY NOT NULL,
+        user_id TEXT,
+        name TEXT NOT NULL,
+        amount_minor INTEGER NOT NULL,
+        category_id TEXT,
+        due_date TEXT NOT NULL,
+        recurrence TEXT NOT NULL DEFAULT 'once',
+        method TEXT,
+        note TEXT,
+        archived INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_commit_due ON commitments(due_date);
+    `);
+    db.execSync('PRAGMA user_version = 4');
   }
 
   seedIfEmpty();
@@ -648,6 +699,102 @@ export function setBudget(categoryId: string | null, amountMinor: number) {
       Math.round(amountMinor),
       nowIso(),
     ]);
+}
+
+/* ------------------------------------------------------------------ */
+/* commitments                                                         */
+/* ------------------------------------------------------------------ */
+
+const COMMIT_SELECT = `
+  SELECT c.*, IFNULL(k.name,'Uncategorised') as cat_name, IFNULL(k.icon,'package') as cat_icon,
+         IFNULL(k.color,'#90A4AE') as cat_color
+  FROM commitments c LEFT JOIN categories k ON k.id = c.category_id
+  WHERE c.deleted_at IS NULL`;
+
+export const listCommitments = (includeArchived = false): CommitmentView[] =>
+  db.getAllSync<CommitmentView>(
+    `${COMMIT_SELECT} ${includeArchived ? '' : 'AND c.archived = 0'} ORDER BY c.due_date ASC`
+  );
+
+export const getCommitment = (id: string): Commitment | null =>
+  db.getFirstSync<Commitment>('SELECT * FROM commitments WHERE id = ?', [id]);
+
+/** Everything owed between now and `to`, ignoring what is already archived. */
+export const commitmentsDueBy = (to: string): CommitmentView[] =>
+  db.getAllSync<CommitmentView>(`${COMMIT_SELECT} AND c.archived = 0 AND c.due_date <= ? ORDER BY c.due_date ASC`, [to]);
+
+export function saveCommitment(c: Partial<Commitment> & { name: string; amount_minor: number; due_date: string }) {
+  const ts = nowIso();
+  if (c.id) {
+    db.runSync(
+      `UPDATE commitments SET name=?, amount_minor=?, category_id=?, due_date=?, recurrence=?, method=?, note=?, updated_at=? WHERE id=?`,
+      [c.name, Math.round(c.amount_minor), c.category_id ?? null, c.due_date, c.recurrence ?? 'once',
+       c.method ?? null, c.note ?? null, ts, c.id]
+    );
+    return c.id;
+  }
+  const id = uuid();
+  db.runSync(
+    `INSERT INTO commitments (id,name,amount_minor,category_id,due_date,recurrence,method,note,archived,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,0,?,?)`,
+    [id, c.name, Math.round(c.amount_minor), c.category_id ?? null, c.due_date, c.recurrence ?? 'once',
+     c.method ?? null, c.note ?? null, ts, ts]
+  );
+  return id;
+}
+
+export const deleteCommitment = (id: string) =>
+  db.runSync('UPDATE commitments SET deleted_at=?, updated_at=? WHERE id=?', [nowIso(), nowIso(), id]);
+
+export const archiveCommitment = (id: string, archived = true) =>
+  db.runSync('UPDATE commitments SET archived=?, updated_at=? WHERE id=?', [archived ? 1 : 0, nowIso(), id]);
+
+/** The next occurrence after `from` for a recurring commitment. */
+export function nextDue(from: string, recurrence: Recurrence): string | null {
+  if (recurrence === 'once') return null;
+  const d = fromLocalDate(from);
+  if (recurrence === 'weekly') d.setDate(d.getDate() + 7);
+  else if (recurrence === 'monthly') d.setMonth(d.getMonth() + 1);
+  else d.setFullYear(d.getFullYear() + 1);
+  return toLocalDate(d);
+}
+
+/**
+ * Turn a commitment into a real expense.
+ *
+ * A one-off is archived afterwards; a recurring one rolls forward to its next
+ * date, so the same row keeps serving the obligation rather than piling up
+ * duplicates.
+ */
+export function settleCommitment(id: string, onDate?: string): string | null {
+  const c = getCommitment(id);
+  if (!c) return null;
+
+  const txnId = insertTxn({
+    amount_minor: c.amount_minor,
+    type: 'expense',
+    category_id: c.category_id ?? (listCategories().find((k) => k.key === 'other')?.id ?? ''),
+    local_date: onDate ?? c.due_date,
+    method: c.method,
+    note: c.note?.trim() || c.name,
+    source: 'manual',
+    confidence: 1,
+  });
+
+  const next = nextDue(c.due_date, c.recurrence);
+  if (next) db.runSync('UPDATE commitments SET due_date=?, updated_at=? WHERE id=?', [next, nowIso(), id]);
+  else archiveCommitment(id, true);
+
+  return txnId;
+}
+
+/** Move past a due date without spending — the month you skip the pass. */
+export function skipCommitment(id: string) {
+  const c = getCommitment(id);
+  if (!c) return;
+  const next = nextDue(c.due_date, c.recurrence);
+  if (next) db.runSync('UPDATE commitments SET due_date=?, updated_at=? WHERE id=?', [next, nowIso(), id]);
+  else archiveCommitment(id, true);
 }
 
 /* ------------------------------------------------------------------ */

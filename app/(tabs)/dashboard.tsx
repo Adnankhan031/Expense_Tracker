@@ -5,13 +5,21 @@ import { router, useFocusEffect } from 'expo-router';
 
 import { Bars, Donut, HBar, Ring } from '../../src/charts';
 import { MonthStats, buildInsights, periodStats } from '../../src/analytics';
-import { TxnWithCategory, pendingReimbursements, searchTxns, settleReimbursement } from '../../src/db';
+import {
+  CommitmentView,
+  TxnWithCategory,
+  commitmentsDueBy,
+  pendingReimbursements,
+  searchTxns,
+  settleCommitment,
+  settleReimbursement,
+} from '../../src/db';
 import { useData, useSettings } from '../../src/store';
 import { cycleEndFor, cycleLabel, cycleStartingIn, currentCycle, shiftCycle } from '../../src/cycle';
 import { radius, space, useTheme } from '../../src/theme';
 import { Card, EmptyState, IconBadge, Money, Screen, SectionTitle, tap } from '../../src/ui';
 import { MonthPickerSheet } from '../../src/pickers';
-import { currentMonth, formatMoney, monthLabel, shiftMonth, shortDayLabel, todayLocal } from '../../src/format';
+import { addDays, currentMonth, dayLabel, formatMoney, monthLabel, shiftMonth, shortDayLabel, todayLocal } from '../../src/format';
 import { TxnEditor } from '../../src/TxnEditor';
 import { CategoryIcon, IconTile } from '../../src/icons';
 
@@ -28,6 +36,7 @@ export default function DashboardScreen() {
   const [stats, setStats] = useState<MonthStats | null>(null);
   const [recent, setRecent] = useState<TxnWithCategory[]>([]);
   const [owed, setOwed] = useState<TxnWithCategory[]>([]);
+  const [due, setDue] = useState<CommitmentView[]>([]);
   const [showMonth, setShowMonth] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -41,6 +50,8 @@ export default function DashboardScreen() {
     setStats(s);
     setRecent(searchTxns({ from: s.from, to: s.to, limit: 6 }));
     setOwed(pendingReimbursements());
+    // Only what is imminent — the full list lives on its own screen.
+    setDue(commitmentsDueBy(addDays(todayLocal(), 14)));
   }, [from, to, prevCycle, cycleStartDay]);
 
   useFocusEffect(
@@ -177,6 +188,67 @@ export default function DashboardScreen() {
                 ))}
               </View>
             </Card>
+
+            {due.length > 0 && (
+              <>
+                <SectionTitle
+                  right={
+                    <Pressable onPress={() => { tap(); router.push('/commitments'); }}>
+                      <Text style={{ color: t.brand, fontSize: 12, fontWeight: '700' }}>All</Text>
+                    </Pressable>
+                  }
+                >
+                  Coming up
+                </SectionTitle>
+                <Card>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.md }}>
+                    <Text style={{ color: t.dim, fontSize: 12.5, flex: 1 }}>
+                      {due.length} due in the next two weeks
+                    </Text>
+                    <Money minor={due.reduce((a, b) => a + b.amount_minor, 0)} size={18} color={t.brand} />
+                  </View>
+                  {due.map((c, i) => {
+                    const overdue = c.due_date < todayLocal();
+                    return (
+                      <View
+                        key={c.id}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 10,
+                          paddingVertical: 9,
+                          borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
+                          borderTopColor: t.line,
+                        }}
+                      >
+                        <IconTile name={c.cat_icon} color={c.cat_color} size={30} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: t.ink, fontSize: 13.5, fontWeight: '600' }} numberOfLines={1}>
+                            {c.name}
+                          </Text>
+                          <Text style={{ color: overdue ? t.down : t.faint, fontSize: 11 }}>
+                            {overdue ? 'Overdue · ' : ''}
+                            {dayLabel(c.due_date)}
+                          </Text>
+                        </View>
+                        <Money minor={c.amount_minor} size={13.5} />
+                        <Pressable
+                          onPress={() => { tap(); settleCommitment(c.id); reload(); load(); }}
+                          style={{
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            borderRadius: radius.pill,
+                            backgroundColor: t.brandSoft,
+                          }}
+                        >
+                          <Text style={{ color: t.brand, fontSize: 11, fontWeight: '700' }}>Paid</Text>
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </Card>
+              </>
+            )}
 
             {owed.length > 0 && (
               <>

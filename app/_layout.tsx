@@ -159,6 +159,7 @@ function Shell() {
         <Stack.Screen name="category/[id]" options={{ title: 'Category' }} />
         <Stack.Screen name="manual" options={{ title: 'Add entries' }} />
         <Stack.Screen name="auth" options={{ title: 'Account', presentation: 'modal' }} />
+        <Stack.Screen name="commitments" options={{ title: 'Upcoming' }} />
         <Stack.Screen name="manage/categories" options={{ title: 'Categories' }} />
         <Stack.Screen name="manage/budgets" options={{ title: 'Budgets' }} />
         <Stack.Screen name="manage/accounts" options={{ title: 'Accounts' }} />

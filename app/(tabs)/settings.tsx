@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native';
-import { Check, ChevronLeft, ChevronRight, CloudUpload, Search, X } from 'lucide-react-native';
+import { CalendarClock, Check, ChevronLeft, ChevronRight, CloudUpload, Search, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 import * as Updates from 'expo-updates';
 import * as Sharing from 'expo-sharing';
@@ -275,6 +275,32 @@ export default function SettingsScreen() {
               Months shorter than this start on their last day instead — February included.
             </Text>
           )}
+        </Card>
+
+        <SectionTitle>Planned</SectionTitle>
+        <Card onPress={() => router.push('/commitments')}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: radius.md,
+                backgroundColor: t.brandSoft,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <CalendarClock size={20} color={t.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: t.ink, fontSize: 15.5, fontWeight: '700' }}>Upcoming commitments</Text>
+              <Text style={{ color: t.dim, fontSize: 12.5, marginTop: 2, lineHeight: 17 }}>
+                Rent, passes, renewals — anything you already know is coming. Confirm it on the day and it becomes a
+                normal entry.
+              </Text>
+            </View>
+            <ChevronRight size={17} color={t.faint} />
+          </View>
         </Card>
 
         <SectionTitle>Appearance</SectionTitle>

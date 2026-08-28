@@ -229,6 +229,51 @@ async function syncSmallTables(userId: string) {
     if (error) throw error;
   }
 
+  // Commitments are few and change rarely, so reconcile them whole.
+  const commitments = db.getAllSync<Record<string, unknown>>('SELECT * FROM commitments WHERE deleted_at IS NULL');
+  if (commitments.length) {
+    const { error } = await sb.from('commitments').upsert(
+      commitments.map((c) => ({
+        id: c.id,
+        user_id: userId,
+        name: c.name,
+        amount_minor: c.amount_minor,
+        category_id: c.category_id,
+        due_date: c.due_date,
+        recurrence: c.recurrence,
+        method: c.method,
+        note: c.note,
+        archived: !!c.archived,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+      })),
+      { onConflict: 'id' }
+    );
+    if (error) throw error;
+  }
+
+  const { data: remoteCommitments } = await sb
+    .from('commitments')
+    .select('*')
+    .eq('user_id', userId)
+    .is('deleted_at', null);
+  db.withTransactionSync(() => {
+    for (const r of (remoteCommitments ?? []) as Record<string, unknown>[]) {
+      const local = db.getFirstSync<{ updated_at: string }>('SELECT updated_at FROM commitments WHERE id = ?', [
+        r.id as string,
+      ]);
+      if (local && local.updated_at >= (r.updated_at as string)) continue;
+      db.runSync(
+        `INSERT OR REPLACE INTO commitments
+         (id,user_id,name,amount_minor,category_id,due_date,recurrence,method,note,archived,created_at,updated_at,deleted_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NULL)`,
+        [r.id as string, userId, r.name as string, r.amount_minor as number, (r.category_id as string) ?? null,
+         r.due_date as string, (r.recurrence as string) ?? 'once', (r.method as string) ?? null,
+         (r.note as string) ?? null, r.archived ? 1 : 0, r.created_at as string, r.updated_at as string]
+      );
+    }
+  });
+
   const { data: remoteAliases } = await sb.from('aliases').select('*').eq('user_id', userId);
   db.withTransactionSync(() => {
     for (const r of (remoteAliases ?? []) as Record<string, unknown>[]) {

@@ -28,12 +28,15 @@ export function DatePickerSheet({
   onClose,
   onPick,
   title = 'Pick a date',
+  allowFuture = false,
 }: {
   visible: boolean;
   value: string;
   onClose: () => void;
   onPick: (date: string) => void;
   title?: string;
+  /** Commitments are dated forward; expenses are not. */
+  allowFuture?: boolean;
 }) {
   const t = useTheme();
   const [ym, setYm] = useState(monthKey(value || todayLocal()));
@@ -82,7 +85,7 @@ export function DatePickerSheet({
         {cells.map((c, i) => {
           const selected = c.date === value;
           const isToday = c.date === today;
-          const future = !!c.date && c.date > today;
+          const future = !allowFuture && !!c.date && c.date > today;
           return (
             <View key={i} style={{ width: `${100 / 7}%`, aspectRatio: 1, padding: 3 }}>
               {c.date ? (
