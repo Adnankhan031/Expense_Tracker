@@ -287,10 +287,11 @@ export function matchCategory(text: string, ctx: ParseContext, wantType?: TxnTyp
 
 function fallbackId(ctx: ParseContext, wantType?: TxnType) {
   if (wantType === 'income') {
-    const inc = ctx.categories.find((c) => c.id === 'other_income') ?? ctx.categories.find((c) => c.kind === 'income');
+    const inc =
+      ctx.categories.find((c) => c.key === 'other_income') ?? ctx.categories.find((c) => c.kind === 'income');
     if (inc) return inc.id;
   }
-  return ctx.categories.find((c) => c.id === 'other')?.id ?? ctx.categories[0]?.id ?? 'other';
+  return ctx.categories.find((c) => c.key === 'other')?.id ?? ctx.categories[0]?.id ?? '';
 }
 
 /* ------------------------------------------------------------------ */

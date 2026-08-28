@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Text, View } from 'react-native';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -10,6 +10,7 @@ import * as SystemUI from 'expo-system-ui';
 
 import { initDb } from '../src/db';
 import { useData, useSettings } from '../src/store';
+import { useAuth } from '../src/auth';
 import { useTheme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -19,6 +20,7 @@ export default function RootLayout() {
   const [error, setError] = useState<string | null>(null);
   const hydrate = useSettings((s) => s.hydrate);
   const reload = useData((s) => s.reload);
+  const initAuth = useAuth((s) => s.init);
 
   useEffect(() => {
     try {
@@ -26,12 +28,14 @@ export default function RootLayout() {
       hydrate();
       reload();
       setReady(true);
+      // Restores the stored session and kicks off a background sync.
+      void initAuth();
     } catch (e: any) {
       setError(String(e?.message ?? e));
     } finally {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [hydrate, reload]);
+  }, [hydrate, reload, initAuth]);
 
   if (error) {
     return (
@@ -88,9 +92,34 @@ function useAutoUpdate() {
   }, []);
 }
 
+/**
+ * Push local changes up shortly after they happen, and again whenever the app
+ * comes back to the foreground. Writes never wait on this — SQLite has already
+ * accepted them — so losing signal only delays the upload.
+ */
+function useAutoSync() {
+  const version = useData((s) => s.version);
+  const user = useAuth((s) => s.user);
+
+  useEffect(() => {
+    if (!user) return;
+    const id = setTimeout(() => void useAuth.getState().sync({ silent: true }), 4000);
+    return () => clearTimeout(id);
+  }, [version, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void useAuth.getState().sync({ silent: true });
+    });
+    return () => sub.remove();
+  }, [user]);
+}
+
 function Shell() {
   const t = useTheme();
   useAutoUpdate();
+  useAutoSync();
 
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(t.bg).catch(() => {});
@@ -129,6 +158,7 @@ function Shell() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="category/[id]" options={{ title: 'Category' }} />
         <Stack.Screen name="manual" options={{ title: 'Add entries' }} />
+        <Stack.Screen name="auth" options={{ title: 'Account', presentation: 'modal' }} />
         <Stack.Screen name="manage/categories" options={{ title: 'Categories' }} />
         <Stack.Screen name="manage/budgets" options={{ title: 'Budgets' }} />
         <Stack.Screen name="manage/accounts" options={{ title: 'Accounts' }} />

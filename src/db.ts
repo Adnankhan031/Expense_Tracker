@@ -1,6 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import { SEED_ACCOUNTS, SEED_CATEGORIES } from './seed';
 import { ICON_MAP, resolveIconName } from './icons';
+import { isUuid, uuid } from './uuid';
 
 export const db = SQLite.openDatabaseSync('spendly.db');
 
@@ -9,6 +10,8 @@ export type TxnSource = 'chat' | 'quick' | 'backfill' | 'manual' | 'import';
 
 export type Category = {
   id: string;
+  /** Stable slug ('food', 'other'). Survives the id becoming a uuid. */
+  key: string;
   name: string;
   icon: string;
   color: string;
@@ -18,7 +21,7 @@ export type Category = {
   archived: number;
 };
 
-export type Account = { id: string; name: string; kind: string; icon: string; sort: number; archived: number };
+export type Account = { id: string; key: string; name: string; kind: string; icon: string; sort: number; archived: number };
 
 export type Txn = {
   id: string;
@@ -55,11 +58,7 @@ export type ChatMessage = {
   created_at: string;
 };
 
-export function uid(): string {
-  return (
-    Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)
-  );
-}
+export const uid = uuid;
 
 const nowIso = () => new Date().toISOString();
 
@@ -152,9 +151,67 @@ export function initDb() {
     db.execSync('PRAGMA user_version = 2');
   }
 
+  if (version < 3) {
+    migrateToUuids();
+    db.execSync('PRAGMA user_version = 3');
+  }
+
   seedIfEmpty();
   syncSeedCategories();
   migrateIcons();
+}
+
+/**
+ * Give every row a uuid, and remember the slug that used to be its id.
+ *
+ * Sync only works if a local row and its Supabase row share an identifier, and
+ * that column is a uuid. Old installs minted short slugs, so every id is
+ * rewritten once and every reference to it is rewritten with it. Runs inside a
+ * transaction: either the whole database moves across or none of it does.
+ */
+function migrateToUuids() {
+  db.execSync(`
+    ALTER TABLE categories ADD COLUMN key TEXT NOT NULL DEFAULT '';
+    ALTER TABLE accounts   ADD COLUMN key TEXT NOT NULL DEFAULT '';
+    ALTER TABLE transactions ADD COLUMN user_id TEXT;
+    ALTER TABLE categories   ADD COLUMN user_id TEXT;
+    ALTER TABLE accounts     ADD COLUMN user_id TEXT;
+    ALTER TABLE budgets      ADD COLUMN user_id TEXT;
+    ALTER TABLE aliases      ADD COLUMN user_id TEXT;
+  `);
+
+  db.withTransactionSync(() => {
+    db.runSync("UPDATE categories SET key = id WHERE key = ''");
+    db.runSync("UPDATE accounts   SET key = id WHERE key = ''");
+
+    for (const row of db.getAllSync<{ id: string }>('SELECT id FROM categories')) {
+      if (isUuid(row.id)) continue;
+      const next = uuid();
+      db.runSync('UPDATE transactions SET category_id=? WHERE category_id=?', [next, row.id]);
+      db.runSync('UPDATE budgets      SET category_id=? WHERE category_id=?', [next, row.id]);
+      db.runSync('UPDATE aliases      SET category_id=? WHERE category_id=?', [next, row.id]);
+      db.runSync('UPDATE categories   SET id=? WHERE id=?', [next, row.id]);
+    }
+
+    for (const row of db.getAllSync<{ id: string }>('SELECT id FROM accounts')) {
+      if (isUuid(row.id)) continue;
+      const next = uuid();
+      db.runSync('UPDATE transactions SET account_id=? WHERE account_id=?', [next, row.id]);
+      db.runSync('UPDATE accounts     SET id=? WHERE id=?', [next, row.id]);
+    }
+
+    for (const row of db.getAllSync<{ id: string }>('SELECT id FROM transactions')) {
+      if (isUuid(row.id)) continue;
+      const next = uuid();
+      db.runSync('UPDATE messages     SET txn_id=? WHERE txn_id=?', [next, row.id]);
+      db.runSync('UPDATE transactions SET id=? WHERE id=?', [next, row.id]);
+    }
+
+    for (const row of db.getAllSync<{ id: string }>('SELECT id FROM budgets')) {
+      if (isUuid(row.id)) continue;
+      db.runSync('UPDATE budgets SET id=? WHERE id=?', [uuid(), row.id]);
+    }
+  });
 }
 
 /**
@@ -167,7 +224,9 @@ export function initDb() {
  */
 function syncSeedCategories() {
   const existing = new Map(
-    db.getAllSync<{ id: string; keywords: string }>('SELECT id, keywords FROM categories').map((r) => [r.id, r.keywords])
+    db
+      .getAllSync<{ key: string; keywords: string }>('SELECT key, keywords FROM categories')
+      .map((r) => [r.key, r.keywords])
   );
   const maxSort =
     db.getFirstSync<{ m: number }>('SELECT IFNULL(MAX(sort),0) as m FROM categories')?.m ?? 0;
@@ -177,14 +236,14 @@ function syncSeedCategories() {
     const have = existing.get(cat.id);
     if (have === undefined) {
       db.runSync(
-        'INSERT INTO categories (id,name,icon,color,kind,keywords,sort,archived) VALUES (?,?,?,?,?,?,?,0)',
-        [cat.id, cat.name, cat.icon, cat.color, cat.kind, cat.keywords.join('|'), next++]
+        'INSERT INTO categories (id,key,name,icon,color,kind,keywords,sort,archived) VALUES (?,?,?,?,?,?,?,?,0)',
+        [uuid(), cat.id, cat.name, cat.icon, cat.color, cat.kind, cat.keywords.join('|'), next++]
       );
       continue;
     }
     const merged = new Set([...have.split('|').filter(Boolean), ...cat.keywords]);
     if (merged.size !== have.split('|').filter(Boolean).length) {
-      db.runSync('UPDATE categories SET keywords=? WHERE id=?', [[...merged].join('|'), cat.id]);
+      db.runSync('UPDATE categories SET keywords=? WHERE key=?', [[...merged].join('|'), cat.id]);
     }
   }
 }
@@ -211,15 +270,16 @@ function seedIfEmpty() {
   if ((c?.n ?? 0) === 0) {
     SEED_CATEGORIES.forEach((cat, i) => {
       db.runSync(
-        'INSERT INTO categories (id,name,icon,color,kind,keywords,sort,archived) VALUES (?,?,?,?,?,?,?,0)',
-        [cat.id, cat.name, cat.icon, cat.color, cat.kind, cat.keywords.join('|'), i]
+        'INSERT INTO categories (id,key,name,icon,color,kind,keywords,sort,archived) VALUES (?,?,?,?,?,?,?,?,0)',
+        [uuid(), cat.id, cat.name, cat.icon, cat.color, cat.kind, cat.keywords.join('|'), i]
       );
     });
   }
   const a = db.getFirstSync<{ n: number }>('SELECT COUNT(*) as n FROM accounts');
   if ((a?.n ?? 0) === 0) {
     SEED_ACCOUNTS.forEach((acc, i) => {
-      db.runSync('INSERT INTO accounts (id,name,kind,icon,sort,archived) VALUES (?,?,?,?,?,0)', [
+      db.runSync('INSERT INTO accounts (id,key,name,kind,icon,sort,archived) VALUES (?,?,?,?,?,?,0)', [
+        uuid(),
         acc.id,
         acc.name,
         acc.kind,
@@ -256,8 +316,9 @@ export function saveCategory(c: Partial<Category> & { name: string }) {
   }
   const id = uid();
   const max = db.getFirstSync<{ m: number }>('SELECT IFNULL(MAX(sort),0) as m FROM categories');
-  db.runSync('INSERT INTO categories (id,name,icon,color,kind,keywords,sort,archived) VALUES (?,?,?,?,?,?,?,0)', [
+  db.runSync('INSERT INTO categories (id,key,name,icon,color,kind,keywords,sort,archived) VALUES (?,?,?,?,?,?,?,?,0)', [
     id,
+    'custom_' + id.slice(0, 8),
     c.name,
     c.icon ?? 'package',
     c.color ?? '#90A4AE',
@@ -281,8 +342,9 @@ export function saveAccount(a: Partial<Account> & { name: string }) {
   }
   const id = uid();
   const max = db.getFirstSync<{ m: number }>('SELECT IFNULL(MAX(sort),0) as m FROM accounts');
-  db.runSync('INSERT INTO accounts (id,name,kind,icon,sort,archived) VALUES (?,?,?,?,?,0)', [
+  db.runSync('INSERT INTO accounts (id,key,name,kind,icon,sort,archived) VALUES (?,?,?,?,?,?,0)', [
     id,
+    'custom_' + id.slice(0, 8),
     a.name,
     a.kind ?? 'cash',
     a.icon ?? 'wallet',

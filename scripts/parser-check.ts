@@ -10,7 +10,10 @@ import { parseInput } from '../src/parser';
 import { addDays, monthKey, pad2, todayLocal } from '../src/format';
 
 const categories: Category[] = SEED_CATEGORIES.map((c, i) => ({
+  // ids are uuids in the app; the slug lives on `key`. The corpus asserts on the
+  // slug, so id and key are both the slug here.
   id: c.id,
+  key: c.id,
   name: c.name,
   icon: c.icon,
   color: c.color,

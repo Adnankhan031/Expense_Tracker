@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native';
-import { Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native';
+import { Check, ChevronLeft, ChevronRight, CloudUpload, Search, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 import * as Updates from 'expo-updates';
 import * as Sharing from 'expo-sharing';
@@ -13,6 +13,7 @@ import { Button, Card, Chip, Divider, Money, Row, Screen, SectionTitle, Segmente
 import { firstTxnDate } from '../../src/db';
 import { dayLabel } from '../../src/format';
 import { CURRENCIES } from '../../src/currency';
+import { useAuth } from '../../src/auth';
 import { cycleEndFor, cycleLabel, currentCycle } from '../../src/cycle';
 import { todayLocal } from '../../src/format';
 
@@ -21,6 +22,7 @@ export default function SettingsScreen() {
   const { themeMode, setThemeMode, currency, setCurrencyCode, cycleStartDay, setCycleStartDay } = useSettings();
   const { reload, version, accounts, defaultAccountId, setDefaultAccount } = useData();
   const [busy, setBusy] = useState(false);
+  const { user, syncing, lastSynced, syncError, sync, signOut } = useAuth();
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
 
   const count = totalTxnCount();
@@ -133,6 +135,76 @@ export default function SettingsScreen() {
         </Card>
 
         {/* appearance */}
+        <SectionTitle>Account & sync</SectionTitle>
+        {user ? (
+          <Card>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: radius.md,
+                  backgroundColor: t.brandSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ color: t.brand, fontSize: 16, fontWeight: '800' }}>
+                  {(user.email ?? '?').slice(0, 1).toUpperCase()}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: t.ink, fontSize: 14.5, fontWeight: '700' }} numberOfLines={1}>
+                  {(user.user_metadata as { full_name?: string })?.full_name || user.email}
+                </Text>
+                <Text style={{ color: t.faint, fontSize: 11.5, marginTop: 1 }}>
+                  {syncing
+                    ? 'Syncing…'
+                    : syncError
+                      ? 'Last sync failed — will retry'
+                      : lastSynced
+                        ? `Synced ${new Date(lastSynced).toLocaleString()}`
+                        : 'Not synced yet'}
+                </Text>
+              </View>
+            </View>
+
+            {!!syncError && (
+              <Text style={{ color: t.down, fontSize: 11.5, marginTop: 10, lineHeight: 16 }}>{syncError}</Text>
+            )}
+
+            <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.lg }}>
+              <Button title="Sync now" onPress={() => void sync()} loading={syncing} style={{ flex: 1 }} />
+              <Button title="Sign out" variant="ghost" onPress={() => void signOut()} style={{ flex: 1 }} />
+            </View>
+          </Card>
+        ) : (
+          <Card onPress={() => router.push('/auth')}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: radius.md,
+                  backgroundColor: t.brandSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CloudUpload size={20} color={t.brand} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: t.ink, fontSize: 15.5, fontWeight: '700' }}>Sign in to sync</Text>
+                <Text style={{ color: t.dim, fontSize: 12.5, marginTop: 2, lineHeight: 17 }}>
+                  Back up this phone and share one set of expenses with the web app. Everything you have logged so far
+                  comes with you.
+                </Text>
+              </View>
+              <ChevronRight size={17} color={t.faint} />
+            </View>
+          </Card>
+        )}
+
         <SectionTitle>Your month</SectionTitle>
         <Card>
           <Text style={{ color: t.dim, fontSize: 12.5, lineHeight: 18 }}>

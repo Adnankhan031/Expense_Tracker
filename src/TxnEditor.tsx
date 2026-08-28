@@ -69,7 +69,7 @@ export function TxnEditor({
       setOriginal(null);
       setAmount(seed?.amount_minor ? String(seed.amount_minor / 100) : '');
       setType(seed?.type ?? 'expense');
-      setCategoryId(seed?.category_id ?? categories.find((c) => c.id === 'other')?.id ?? categories[0]?.id ?? 'other');
+      setCategoryId(seed?.category_id ?? categories.find((c) => c.key === 'other')?.id ?? categories[0]?.id ?? 'other');
       setDate(seed?.local_date ?? pinnedDate);
       setMethod(seed?.method ?? null);
       setAccountId(seed?.account_id ?? null);
