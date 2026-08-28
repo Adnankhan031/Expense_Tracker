@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { User } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from './supabase';
 import { lastSyncError, lastSyncedAt, resetSyncState, syncNow } from './sync';
-import { useData } from './store';
+import { useData, useSettings } from './store';
 
 type AuthState = {
   user: User | null;
@@ -87,6 +87,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     });
 
     // Anything pulled down needs to reach the screens.
+    if (result.ok && result.settingsChanged) useSettings.getState().hydrate();
     if (result.ok && (result.pulled > 0 || result.pushed > 0)) useData.getState().reload();
   },
 }));

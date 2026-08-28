@@ -1,4 +1,4 @@
-import { db, getSetting, setSetting } from './db';
+import { SYNCED_SETTING_KEYS, db, getSetting, getSettingRow, setSetting } from './db';
 import { supabase } from './supabase';
 
 /**
@@ -24,6 +24,8 @@ export type SyncResult = {
   ok: boolean;
   pushed: number;
   pulled: number;
+  /** A preference arrived from another device and needs re-reading. */
+  settingsChanged: boolean;
   error?: string;
   at: string;
 };
@@ -286,13 +288,76 @@ async function syncSmallTables(userId: string) {
 }
 
 /* ------------------------------------------------------------------ */
+/* preferences                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Reconcile the handful of preferences that belong to the account rather than
+ * the handset, newest write winning.
+ *
+ * Only the allowlisted keys are touched. The same table stores the auth session,
+ * and uploading that would be a genuine security problem.
+ */
+async function syncSettings(userId: string): Promise<boolean> {
+  const sb = supabase();
+  let changedLocally = false;
+
+  const { data, error } = await sb
+    .from('settings')
+    .select('key,value,updated_at')
+    .eq('user_id', userId)
+    .in('key', SYNCED_SETTING_KEYS as unknown as string[]);
+  if (error) throw error;
+
+  const remote = new Map(
+    (data ?? []).map((r) => [(r as { key: string }).key, r as { value: string; updated_at: string | null }])
+  );
+
+  const toPush: { user_id: string; key: string; value: string; updated_at: string }[] = [];
+
+  for (const key of SYNCED_SETTING_KEYS) {
+    const local = getSettingRow(key);
+    const theirs = remote.get(key);
+
+    if (local && !theirs) {
+      toPush.push({ user_id: userId, key, value: local.value, updated_at: local.updated_at ?? EPOCH });
+      continue;
+    }
+    if (!local && theirs) {
+      setSetting(key, theirs.value);
+      changedLocally = true;
+      continue;
+    }
+    if (!local || !theirs) continue;
+
+    const mine = local.updated_at ?? EPOCH;
+    const yours = theirs.updated_at ?? EPOCH;
+    if (yours > mine) {
+      if (theirs.value !== local.value) {
+        setSetting(key, theirs.value);
+        changedLocally = true;
+      }
+    } else if (mine > yours) {
+      toPush.push({ user_id: userId, key, value: local.value, updated_at: mine });
+    }
+  }
+
+  if (toPush.length) {
+    const { error: upErr } = await sb.from('settings').upsert(toPush, { onConflict: 'user_id,key' });
+    if (upErr) throw upErr;
+  }
+
+  return changedLocally;
+}
+
+/* ------------------------------------------------------------------ */
 /* entry point                                                         */
 /* ------------------------------------------------------------------ */
 
 let running = false;
 
 export async function syncNow(userId: string): Promise<SyncResult> {
-  if (running) return { ok: true, pushed: 0, pulled: 0, at: nowIso() };
+  if (running) return { ok: true, pushed: 0, pulled: 0, settingsChanged: false, at: nowIso() };
   running = true;
 
   const startedAt = nowIso();
@@ -300,6 +365,7 @@ export async function syncNow(userId: string): Promise<SyncResult> {
     await reconcileCatalogue(userId);
     const pushed = await pushTransactions(userId);
     await syncSmallTables(userId);
+    const settingsChanged = await syncSettings(userId);
     const pulled = await pullTransactions(userId);
 
     // Only advance the watermarks once everything succeeded, so a failure part
@@ -309,11 +375,11 @@ export async function syncNow(userId: string): Promise<SyncResult> {
     setSetting('sync.lastOk', startedAt);
     setSetting('sync.lastError', '');
 
-    return { ok: true, pushed, pulled, at: startedAt };
+    return { ok: true, pushed, pulled, settingsChanged, at: startedAt };
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);
     setSetting('sync.lastError', error);
-    return { ok: false, pushed: 0, pulled: 0, error, at: startedAt };
+    return { ok: false, pushed: 0, pulled: 0, settingsChanged: false, error, at: startedAt };
   } finally {
     running = false;
   }

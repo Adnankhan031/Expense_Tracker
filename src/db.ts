@@ -185,6 +185,16 @@ export function initDb() {
     db.execSync('PRAGMA user_version = 3');
   }
 
+  if (version < 5) {
+    // Settings need a timestamp before they can be reconciled across devices.
+    try {
+      db.execSync('ALTER TABLE settings ADD COLUMN updated_at TEXT');
+    } catch {
+      // already present
+    }
+    db.execSync("UPDATE settings SET updated_at = '1970-01-01T00:00:00.000Z' WHERE updated_at IS NULL");
+  }
+
   if (version < 4) {
     db.execSync(`
       CREATE TABLE IF NOT EXISTS commitments (
@@ -206,6 +216,8 @@ export function initDb() {
     `);
     db.execSync('PRAGMA user_version = 4');
   }
+
+  db.execSync('PRAGMA user_version = 5');
 
   seedIfEmpty();
   syncSeedCategories();
@@ -832,10 +844,26 @@ export const getSetting = (key: string): string | null =>
   db.getFirstSync<{ value: string }>('SELECT value FROM settings WHERE key = ?', [key])?.value ?? null;
 
 export const setSetting = (key: string, value: string) =>
-  db.runSync('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [
-    key,
-    value,
-  ]);
+  db.runSync(
+    'INSERT INTO settings (key,value,updated_at) VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at',
+    [key, value, nowIso()]
+  );
+
+export const getSettingRow = (key: string) =>
+  db.getFirstSync<{ value: string; updated_at: string | null }>(
+    'SELECT value, updated_at FROM settings WHERE key = ?',
+    [key]
+  );
+
+/**
+ * Preferences that describe the money rather than the device.
+ *
+ * Deliberately an allowlist, not an exclusion list: this same table holds the
+ * Supabase session under `auth.*`, and those tokens must never be uploaded. A
+ * blanket sync would ship them. Theme stays local too — dark on the phone and
+ * light on a laptop is a reasonable thing to want.
+ */
+export const SYNCED_SETTING_KEYS = ['currencyCode', 'cycleStartDay'] as const;
 
 export function wipeAllData() {
   db.execSync(`
