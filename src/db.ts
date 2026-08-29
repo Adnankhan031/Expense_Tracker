@@ -217,10 +217,11 @@ export function initDb() {
     db.execSync('PRAGMA user_version = 4');
   }
 
-  db.execSync('PRAGMA user_version = 5');
+  db.execSync('PRAGMA user_version = 6');
 
   seedIfEmpty();
   syncSeedCategories();
+  if (version < 6) pruneMovedSeedKeywords();
   migrateIcons();
 }
 
@@ -315,6 +316,50 @@ function syncSeedCategories() {
  * Categories seeded before the icon set existed store an emoji in `icon`.
  * Rewrite those rows once so the UI never has to render emoji.
  */
+/**
+ * Drop keywords that have since moved to a different category.
+ *
+ * `syncSeedCategories` only ever adds, so a word that belonged to one category
+ * in an older seed stays on that row forever. "parents" was a Family & Kids
+ * keyword before Family Support existed; afterwards both rows claimed it, and
+ * `buildKeywordIndex` keeps the first claim in sort order — so the newer, more
+ * specific category could never win, and money sent home kept landing in
+ * Family & Kids.
+ *
+ * A word is only removed when some *other* seed category currently claims it
+ * and this one no longer does. Words the user typed into the keyword field
+ * themselves appear in no seed list, so they are never touched, and a word two
+ * seed categories share (like "gig") is dropped from neither.
+ */
+function pruneMovedSeedKeywords() {
+  const claimedBy = new Map<string, Set<string>>();
+  for (const cat of SEED_CATEGORIES) {
+    for (const k of cat.keywords) {
+      const key = k.trim().toLowerCase();
+      if (!key) continue;
+      const owners = claimedBy.get(key) ?? new Set<string>();
+      owners.add(cat.id);
+      claimedBy.set(key, owners);
+    }
+  }
+
+  const rows = db.getAllSync<{ key: string; keywords: string }>(
+    'SELECT key, keywords FROM categories WHERE key IS NOT NULL'
+  );
+
+  for (const row of rows) {
+    const have = (row.keywords || '').split('|').filter(Boolean);
+    const kept = have.filter((k) => {
+      const owners = claimedBy.get(k.trim().toLowerCase());
+      // Unknown to every seed = the user added it. Owned by us = still ours.
+      return !owners || owners.has(row.key);
+    });
+    if (kept.length !== have.length) {
+      db.runSync('UPDATE categories SET keywords=? WHERE key=?', [kept.join('|'), row.key]);
+    }
+  }
+}
+
 function migrateIcons() {
   const rows = db.getAllSync<{ id: string; icon: string }>('SELECT id, icon FROM categories');
   for (const r of rows) {
