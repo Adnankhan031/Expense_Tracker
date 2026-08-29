@@ -129,6 +129,22 @@ export default function ChatScreen() {
    * reachable once a transaction already existed — which is no use when the
    * receipt in your hand is the thing you are trying to record.
    */
+  /**
+   * Ask where the photo comes from.
+   *
+   * This was tap-for-camera, hold-for-gallery — which nobody would ever
+   * discover. A receipt is just as often already in the camera roll as it is
+   * in your hand, so both deserve to be visible.
+   */
+  const chooseSource = () => {
+    tap();
+    Alert.alert('Scan a receipt', 'Where is the photo?', [
+      { text: 'Take a photo', onPress: () => void scanReceipt('camera') },
+      { text: 'Choose from gallery', onPress: () => void scanReceipt('library') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
   const scanReceipt = async (source: 'camera' | 'library') => {
     setScanning(true);
     try {
@@ -530,8 +546,7 @@ export default function ChatScreen() {
 
           <Pressable
             disabled={scanning}
-            onLongPress={() => { tap(); void scanReceipt('library'); }}
-            onPress={() => { tap(); void scanReceipt('camera'); }}
+            onPress={chooseSource}
             style={{
               width: 42,
               height: 42,
