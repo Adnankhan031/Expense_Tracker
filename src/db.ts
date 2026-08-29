@@ -689,6 +689,52 @@ export const softDeleteTxn = (id: string) =>
 export const restoreTxn = (id: string) =>
   db.runSync('UPDATE transactions SET deleted_at=NULL, updated_at=? WHERE id=?', [nowIso(), id]);
 
+/**
+ * What you have bought before, and what it cost.
+ *
+ * Every saved line is training data: the product name, the category it was
+ * filed under, and the price. Recognising a repeat purchase is the cheapest
+ * classification there is — no dictionary walk, no network, no quota — and the
+ * remembered price is what makes a misread amount obvious, since the same
+ * product rarely changes price between shops.
+ */
+export type KnownProduct = {
+  normalised: string;
+  name: string;
+  category_id: string | null;
+  amount_minor: number;
+  times: number;
+  last_seen: string;
+};
+
+export function knownProducts(limit = 4000): KnownProduct[] {
+  return db.getAllSync<KnownProduct>(
+    `SELECT normalised,
+            MAX(name)            as name,
+            MAX(category_id)     as category_id,
+            CAST(AVG(amount_minor) AS INTEGER) as amount_minor,
+            COUNT(*)             as times,
+            MAX(created_at)      as last_seen
+       FROM transaction_items
+      WHERE deleted_at IS NULL AND normalised <> ''
+      GROUP BY normalised
+      ORDER BY times DESC, last_seen DESC
+      LIMIT ?`,
+    [limit]
+  );
+}
+
+/** The last price paid for a product, for spotting a misread amount. */
+export function lastPriceFor(normalised: string): number | null {
+  const row = db.getFirstSync<{ amount_minor: number }>(
+    `SELECT amount_minor FROM transaction_items
+      WHERE normalised = ? AND deleted_at IS NULL
+      ORDER BY created_at DESC LIMIT 1`,
+    [normalised]
+  );
+  return row?.amount_minor ?? null;
+}
+
 /* ------------------------------------------------------------------ */
 /* translations                                                        */
 /* ------------------------------------------------------------------ */

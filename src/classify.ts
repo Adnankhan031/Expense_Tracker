@@ -130,7 +130,7 @@ export function classifyItem(rawName: string, ctx: ClassifyContext): ItemCategor
   const name = foldJa(rawName);
   if (!name) return { subKey: null, categoryKey: null, confidence: 0, matched: null };
 
-  // 1. learned
+  // 1. learned — an exact repeat of something already filed
   const learned = ctx.learned?.get(name);
   if (learned) {
     return {
@@ -139,6 +139,29 @@ export function classifyItem(rawName: string, ctx: ClassifyContext): ItemCategor
       confidence: 0.98,
       matched: name,
     };
+  }
+
+  /**
+   * 1b. the same product, read slightly differently.
+   *
+   * OCR is not deterministic: 日清 comes back as ヨ清 one week and 日清 the
+   * next, so an exact key misses a product bought a dozen times. Comparing
+   * dakuten-stripped forms recognises the repeat, and a purchase you filed
+   * yourself is a better answer than any dictionary guess.
+   */
+  if (ctx.learned && hasJapanese(name)) {
+    const bare = stripDakuten(name);
+    for (const [key, value] of ctx.learned) {
+      if (key.length < 4 || !hasJapanese(key)) continue;
+      const other = stripDakuten(key);
+      if (other !== bare && !(bare.includes(other) && other.length >= bare.length - 3)) continue;
+      return {
+        subKey: value.subKey ?? null,
+        categoryKey: value.categoryKey ?? null,
+        confidence: 0.93,
+        matched: key,
+      };
+    }
   }
 
   const index = buildIndex(ctx);

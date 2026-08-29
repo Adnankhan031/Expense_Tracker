@@ -3,9 +3,11 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Camera, ImagePlus, Plus, Sparkles, X } from 'lucide-react-native';
 
 import { classifyItem } from './classify';
+import { laptopConfig, readViaLaptop } from './laptop';
 import { foldJa } from './jp';
 import {
   insertTxn,
+  knownProducts,
   learnAlias,
   listAliases,
   listItems,
@@ -126,6 +128,21 @@ export function ItemsEditor({
         cat.parent_key ? { subKey: cat.key } : { categoryKey: cat.key }
       );
     }
+    /**
+     * Your own shopping, folded in on top of the corrections.
+     *
+     * A product bought before is the strongest signal there is — it is not a
+     * dictionary guess about what the word means, it is what you actually
+     * filed it as last time. Aliases come second so an explicit correction
+     * still wins over a habit.
+     */
+    for (const p of knownProducts()) {
+      if (!p.category_id || learned.has(p.normalised)) continue;
+      const cat = byId.get(p.category_id);
+      if (!cat) continue;
+      learned.set(p.normalised, cat.parent_key ? { subKey: cat.key } : { categoryKey: cat.key });
+    }
+
     return { categories: categories.map((c) => ({ key: c.key, keywords: c.keywords })), learned };
   }, [categories, byId, version]);
 
@@ -203,7 +220,16 @@ export function ItemsEditor({
       try {
         receipt = await readReceipt(shot.dataUrl);
       } catch (cloudError) {
-        receipt = await readReceiptOnDevice(shot.uri);
+        // The laptop reads better than the phone does, so it goes second and
+        // ML Kit stays the last resort for when neither is reachable.
+        if (laptopConfig()) {
+          try {
+            receipt = await readViaLaptop(shot.dataUrl);
+          } catch {
+            receipt = null;
+          }
+        }
+        if (!receipt) receipt = await readReceiptOnDevice(shot.uri);
         if (!receipt) throw cloudError;
       }
       if (!receipt.items.length) {

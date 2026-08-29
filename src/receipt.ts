@@ -7,6 +7,7 @@ import { parseReceiptText } from './receiptText';
 import { rowsFromBlocks } from './receiptRows';
 import { cachedTranslations, rememberTranslations } from './db';
 import { foldJa } from './jp';
+import { laptopConfig, translateViaLaptop } from './laptop';
 import { supabase, supabaseConfig } from './supabase';
 
 export type ScannedItem = { name: string; amount_minor: number; qty?: number };
@@ -201,6 +202,23 @@ export async function translateNames(names: string[]): Promise<TranslationOutcom
     });
     if (!res.ok) {
       problem = res.status === 429 ? 'quota' : 'failed';
+      // The laptop has no quota, so an exhausted cloud allowance is exactly
+      // what it is for. Only tried when one is configured.
+      if (laptopConfig()) {
+        const local = await translateViaLaptop(missing);
+        if (local) {
+          const learned: { original: string; en: string }[] = [];
+          missing.forEach((original, i) => {
+            const en = local[i];
+            if (!en || en === original) return;
+            result.set(original, en);
+            learned.push({ original, en });
+          });
+          rememberTranslations(learned);
+          const left = names.filter((n) => !result.has(n)).length;
+          return { translations: result, problem: left > 0 ? problem : null, untranslated: left };
+        }
+      }
       return { translations: result, problem, untranslated: missing.length };
     }
 

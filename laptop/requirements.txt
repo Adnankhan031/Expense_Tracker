@@ -1,0 +1,7 @@
+# Pinned loosely: PaddleOCR moves fast and the Japanese model is what matters.
+fastapi>=0.115
+uvicorn[standard]>=0.32
+paddleocr>=2.9
+paddlepaddle>=2.6
+pillow>=10.0
+httpx>=0.27

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CloudUpload, Search, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 import * as Updates from 'expo-updates';
@@ -14,6 +14,7 @@ import { firstTxnDate } from '../../src/db';
 import { dayLabel } from '../../src/format';
 import { CURRENCIES } from '../../src/currency';
 import { useAuth } from '../../src/auth';
+import { laptopConfig, laptopReachable, saveLaptopConfig } from '../../src/laptop';
 import { cycleEndFor, cycleLabel, currentCycle } from '../../src/cycle';
 import { todayLocal } from '../../src/format';
 
@@ -24,6 +25,11 @@ export default function SettingsScreen() {
   const [busy, setBusy] = useState(false);
   const { user, syncing, lastSynced, syncError, sync, signOut } = useAuth();
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+
+  const savedLaptop = laptopConfig();
+  const [laptopUrl, setLaptopUrl] = useState(savedLaptop?.url ?? '');
+  const [laptopKey, setLaptopKey] = useState(savedLaptop?.key ?? '');
+  const [laptopState, setLaptopState] = useState<'idle' | 'saved' | 'testing' | 'up' | 'down'>('idle');
 
   const count = totalTxnCount();
   const since = firstTxnDate();
@@ -387,6 +393,90 @@ export default function SettingsScreen() {
         )}
 
         {/* manage */}
+        <SectionTitle>Laptop service</SectionTitle>
+        <Card>
+          <Text style={{ color: t.dim, fontSize: 12.5, lineHeight: 18 }}>
+            Reads and translates receipts on your own machine when the daily cloud limit runs out.
+            Leave the address empty to use the phone instead.
+          </Text>
+
+          <TextInput
+            value={laptopUrl}
+            onChangeText={setLaptopUrl}
+            placeholder="https://something.trycloudflare.com"
+            placeholderTextColor={t.faint}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={{
+              backgroundColor: t.sunken,
+              borderRadius: radius.md,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              color: t.ink,
+              fontSize: 14.5,
+              marginTop: space.md,
+            }}
+          />
+          <TextInput
+            value={laptopKey}
+            onChangeText={setLaptopKey}
+            placeholder="Shared key (SPENDLY_KEY)"
+            placeholderTextColor={t.faint}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            style={{
+              backgroundColor: t.sunken,
+              borderRadius: radius.md,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              color: t.ink,
+              fontSize: 14.5,
+              marginTop: 8,
+            }}
+          />
+
+          <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.md }}>
+            <Button
+              title="Save"
+              onPress={() => {
+                tap();
+                saveLaptopConfig(laptopUrl, laptopKey);
+                setLaptopState('saved');
+              }}
+              style={{ flex: 1 }}
+            />
+            <Button
+              title="Test"
+              variant="ghost"
+              loading={laptopState === 'testing'}
+              onPress={async () => {
+                tap();
+                saveLaptopConfig(laptopUrl, laptopKey);
+                setLaptopState('testing');
+                setLaptopState((await laptopReachable()) ? 'up' : 'down');
+              }}
+              style={{ flex: 1 }}
+            />
+          </View>
+
+          {laptopState !== 'idle' && (
+            <Text
+              style={{
+                color: laptopState === 'down' ? t.down : laptopState === 'up' ? t.up : t.dim,
+                fontSize: 12.5,
+                marginTop: 10,
+              }}
+            >
+              {laptopState === 'saved' && 'Saved.'}
+              {laptopState === 'testing' && 'Checking…'}
+              {laptopState === 'up' && 'Reachable — it will take over when the cloud limit runs out.'}
+              {laptopState === 'down' &&
+                'No answer. Check the laptop is awake, the service is running, and the key matches.'}
+            </Text>
+          )}
+        </Card>
+
         <SectionTitle>Manage</SectionTitle>
         <Card>
           <Row

@@ -36,6 +36,7 @@ import { Button, Chip, EmptyState, IconBadge, Money, Screen, Sheet, tap, tapSucc
 import { DatePickerSheet } from '../../src/pickers';
 import { TxnEditor } from '../../src/TxnEditor';
 import { ItemsEditor, type ReceiptDraft } from '../../src/ItemsEditor';
+import { laptopConfig, readViaLaptop } from '../../src/laptop';
 import {
   captureReceipt,
   pickReceipt,
@@ -173,7 +174,16 @@ export default function ChatScreen() {
       try {
         receipt = await readReceipt(shot.dataUrl);
       } catch (cloudError) {
-        receipt = await readReceiptOnDevice(shot.uri);
+        // The laptop reads better than the phone does, so it goes second and
+        // ML Kit stays the last resort for when neither is reachable.
+        if (laptopConfig()) {
+          try {
+            receipt = await readViaLaptop(shot.dataUrl);
+          } catch {
+            receipt = null;
+          }
+        }
+        if (!receipt) receipt = await readReceiptOnDevice(shot.uri);
         if (!receipt) throw cloudError;
         fellBack = cloudError instanceof Error ? cloudError.message : 'the reader was unavailable';
       }
