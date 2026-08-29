@@ -1,6 +1,9 @@
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
+import TextRecognition, { TextRecognitionScript } from '@react-native-ml-kit/text-recognition';
+
+import { parseReceiptText } from './receiptText';
 import { supabase, supabaseConfig } from './supabase';
 
 export type ScannedItem = { name: string; amount_minor: number; qty?: number };
@@ -27,25 +30,55 @@ async function toDataUrl(uri: string): Promise<string> {
   return `data:image/jpeg;base64,${out.base64}`;
 }
 
+/**
+ * Read the receipt on the phone, with no network and no quota.
+ *
+ * ML Kit is a dedicated OCR engine rather than a general model guessing at
+ * pixels, so it is both faster and free to run as often as you like. It returns
+ * text, not structure; `parseReceiptText` supplies the structure.
+ *
+ * Returns null when the text does not look like a receipt, so the caller can
+ * fall back to the cloud reader rather than showing an empty draft.
+ */
+export async function readReceiptOnDevice(uri: string): Promise<ScannedReceipt | null> {
+  const result = await TextRecognition.recognize(uri, TextRecognitionScript.JAPANESE);
+  const lines = result.blocks.flatMap((b) => b.lines.map((l) => l.text));
+  if (lines.length < 4) return null;
+
+  const parsed = parseReceiptText(lines);
+  // One or two lines is more likely a misread sign than a shopping trip.
+  if (parsed.items.length < 2) return null;
+
+  return {
+    merchant: parsed.merchant,
+    purchased_on: parsed.purchased_on,
+    total: parsed.total,
+    items: parsed.items,
+    model: 'on-device',
+  };
+}
+
 /** Take a photo of a receipt. Returns null when the user backs out. */
-export async function captureReceipt(): Promise<string | null> {
+export type Shot = { uri: string; dataUrl: string };
+
+export async function captureReceipt(): Promise<Shot | null> {
   const perm = await ImagePicker.requestCameraPermissionsAsync();
   if (!perm.granted) throw new Error('Camera access is off for Spendly. Turn it on in Settings.');
 
   const shot = await ImagePicker.launchCameraAsync({ quality: 1, exif: false });
   if (shot.canceled || !shot.assets?.[0]) return null;
-  return toDataUrl(shot.assets[0].uri);
+  return { uri: shot.assets[0].uri, dataUrl: await toDataUrl(shot.assets[0].uri) };
 }
 
 /** Pick an existing photo of a receipt. Returns null when the user backs out. */
-export async function pickReceipt(): Promise<string | null> {
+export async function pickReceipt(): Promise<Shot | null> {
   const shot = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
     quality: 1,
     exif: false,
   });
   if (shot.canceled || !shot.assets?.[0]) return null;
-  return toDataUrl(shot.assets[0].uri);
+  return { uri: shot.assets[0].uri, dataUrl: await toDataUrl(shot.assets[0].uri) };
 }
 
 /**

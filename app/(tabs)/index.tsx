@@ -36,7 +36,13 @@ import { Button, Chip, EmptyState, IconBadge, Money, Screen, Sheet, tap, tapSucc
 import { DatePickerSheet } from '../../src/pickers';
 import { TxnEditor } from '../../src/TxnEditor';
 import { ItemsEditor, type ReceiptDraft } from '../../src/ItemsEditor';
-import { captureReceipt, pickReceipt, readReceipt, type ScannedItem } from '../../src/receipt';
+import {
+  captureReceipt,
+  pickReceipt,
+  readReceipt,
+  readReceiptOnDevice,
+  type ScannedItem,
+} from '../../src/receipt';
 import { dayLabel, formatMoney, shortDayLabel, todayLocal } from '../../src/format';
 import { CategoryIcon, IconTile } from '../../src/icons';
 import { useKeyboardHeight } from '../../src/useKeyboard';
@@ -146,10 +152,19 @@ export default function ChatScreen() {
   const scanReceipt = async (source: 'camera' | 'library') => {
     setScanning(true);
     try {
-      const dataUrl = source === 'camera' ? await captureReceipt() : await pickReceipt();
-      if (!dataUrl) return;
+      const shot = source === 'camera' ? await captureReceipt() : await pickReceipt();
+      if (!shot) return;
 
-      const receipt = await readReceipt(dataUrl);
+      /**
+       * The phone reads it first.
+       *
+       * ML Kit is free, works offline, has no daily cap and answers in well
+       * under a second. The cloud model is only asked when the on-device text
+       * does not look like a receipt, which is what keeps the free quota for
+       * the cases that actually need it.
+       */
+      let receipt = await readReceiptOnDevice(shot.uri);
+      if (!receipt) receipt = await readReceipt(shot.dataUrl);
       if (!receipt.items.length) {
         setScanError('No line items found. Try a straighter, brighter photo, with the whole receipt in frame.');
         return;

@@ -1,0 +1,135 @@
+import { foldJa, narrowAscii } from './jp';
+
+/**
+ * Turn the raw text of a receipt into its line items.
+ *
+ * On-device OCR returns text, not structure. Deciding that `ｷｬﾍﾞﾂ 158` is a
+ * purchase and `小計 6,806` is not was previously the model's job; here it is
+ * ordinary code, which costs nothing to run and never hits a quota.
+ *
+ * The rules are the ones already written into the model's prompt, so this is
+ * transcription rather than invention:
+ *   - a line ending in a number is a candidate item
+ *   - 小計 / 合計 / 税 / お預り / お釣り / ポイント and payment lines are not
+ *   - 値引 / 割引 are items with a negative amount
+ *   - a quantity line belongs to the item above it
+ */
+
+export type ParsedLine = { name: string; amount_minor: number };
+export type ParsedReceipt = {
+  merchant: string | null;
+  purchased_on: string | null;
+  total: number | null;
+  items: ParsedLine[];
+};
+
+/** Words that mean "this line is not something you bought". */
+const NOT_AN_ITEM = [
+  '小計', '合計', '総計', '税', '消費税', '内税', '外税', '対象',
+  'お預り', '預り', 'お預かり', 'お釣り', '釣り', 'おつり', 'つり',
+  'ポイント', 'point', 'カード', 'クレジット', '現金', '電子マネー',
+  'クーポン', 'レジ', '責任者', '番号', 'tel', '電話', '点数', 'お買上',
+  '領収', 'レシート', '取引', '売上', '残高', 'バランス', '支払',
+];
+
+/** Words that mean the amount should be subtracted. */
+const DISCOUNT = ['値引', '割引', '引き', 'discount'];
+
+/**
+ * A trailing amount: ¥1,290 / 1290 / -100 / ￥ 2,480
+ *
+ * The leading whitespace requirement is not cosmetic. Without it the "-1" that
+ * ends the address 西早稲田 3-1-1 parsed as an item worth minus one yen: a
+ * hyphenated street number ends in exactly the shape of a discount.
+ */
+const TRAILING_AMOUNT = /(?:^|\s)(-?)\s*[¥￥\$]?\s*(\d{1,3}(?:,\d{3})+|\d+)\s*[※*軽]?\s*$/;
+
+/** "2点 x 198" or "3コ×128" — a quantity breakdown, not its own purchase. */
+const QUANTITY_LINE = /^\s*\d+\s*[点個врコこ]?\s*[x×✕*]\s*[¥￥]?\s*[\d,]+\s*$/i;
+
+function amountOf(line: string): number | null {
+  const m = narrowAscii(line).match(TRAILING_AMOUNT);
+  if (!m) return null;
+  const digits = m[2].replace(/,/g, '');
+  const n = Number(digits);
+  if (!Number.isFinite(n)) return null;
+  return m[1] === '-' ? -Math.abs(n) : n;
+}
+
+function nameOf(line: string): string {
+  return narrowAscii(line).replace(TRAILING_AMOUNT, '').replace(/[※*軽]+\s*$/, '').trim();
+}
+
+function isExcluded(line: string): boolean {
+  const f = foldJa(line);
+  return NOT_AN_ITEM.some((w) => f.includes(foldJa(w)));
+}
+
+function isDiscount(line: string): boolean {
+  const f = foldJa(line);
+  return DISCOUNT.some((w) => f.includes(foldJa(w)));
+}
+
+/** 2026年08月29日 · 2026/08/29 · 26-08-29 → 2026-08-29 */
+function dateIn(text: string): string | null {
+  const t = narrowAscii(text);
+  const jp = t.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+  if (jp) return `${jp[1]}-${jp[2].padStart(2, '0')}-${jp[3].padStart(2, '0')}`;
+
+  const slash = t.match(/\b(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})\b/);
+  if (slash) return `${slash[1]}-${slash[2].padStart(2, '0')}-${slash[3].padStart(2, '0')}`;
+
+  const short = t.match(/\b(\d{2})[/\-.](\d{1,2})[/\-.](\d{1,2})\b/);
+  if (short) return `20${short[1]}-${short[2].padStart(2, '0')}-${short[3].padStart(2, '0')}`;
+
+  return null;
+}
+
+export function parseReceiptText(raw: string[]): ParsedReceipt {
+  const lines = raw.map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+
+  // The shop name is the first line carrying no digits — receipts put it at the
+  // top, above an address that always has numbers in it.
+  const merchant = lines.slice(0, 6).find((l) => !/\d/.test(l) && l.length >= 2) ?? null;
+
+  let purchased_on: string | null = null;
+  for (const l of lines) {
+    purchased_on = dateIn(l);
+    if (purchased_on) break;
+  }
+
+  let total: number | null = null;
+  const items: ParsedLine[] = [];
+
+  for (const line of lines) {
+    const amount = amountOf(line);
+
+    // 合計 is the one excluded line worth keeping, as the receipt's own total.
+    if (amount !== null && /合計|総計/.test(line) && !/小計/.test(line)) {
+      if (total === null) total = Math.abs(amount);
+      continue;
+    }
+
+    if (amount === null || isExcluded(line)) continue;
+
+    // "2点 x 198" describes the line above rather than a separate purchase.
+    if (QUANTITY_LINE.test(narrowAscii(line))) continue;
+
+    const name = nameOf(line);
+    if (!name || /^[\d\s.,:-]+$/.test(name)) continue;
+
+    items.push({ name, amount_minor: isDiscount(line) ? -Math.abs(amount) : amount });
+  }
+
+  // A subtotal read as an item would double the basket. If the items already
+  // sum to the total, an entry equal to the total is that subtotal.
+  if (total !== null && items.length > 1) {
+    const sum = items.reduce((a, i) => a + i.amount_minor, 0);
+    const dupe = items.findIndex((i) => i.amount_minor === total);
+    if (dupe >= 0 && sum - total > 0 && Math.abs(sum - total - total) < total * 0.5) {
+      items.splice(dupe, 1);
+    }
+  }
+
+  return { merchant, purchased_on, total, items };
+}

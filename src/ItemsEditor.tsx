@@ -8,7 +8,7 @@ import { useData } from './store';
 import { radius, space, useTheme } from './theme';
 import { Button, Card, Money, Sheet, tap } from './ui';
 import { CategoryIcon } from './icons';
-import { captureReceipt, pickReceipt, readReceipt } from './receipt';
+import { captureReceipt, pickReceipt, readReceipt, readReceiptOnDevice } from './receipt';
 
 type Row = {
   /** Local key only — rows are replaced wholesale on save. */
@@ -152,10 +152,12 @@ export function ItemsEditor({
     setScanError(null);
     setScanNote(null);
     try {
-      const dataUrl = source === 'camera' ? await captureReceipt() : await pickReceipt();
-      if (!dataUrl) return; // backed out
+      const shot = source === 'camera' ? await captureReceipt() : await pickReceipt();
+      if (!shot) return; // backed out
 
-      const receipt = await readReceipt(dataUrl);
+      // On-device first; the cloud model only when that cannot make sense of it.
+      let receipt = await readReceiptOnDevice(shot.uri);
+      if (!receipt) receipt = await readReceipt(shot.dataUrl);
       if (!receipt.items.length) {
         setScanError('No line items found. Try a straighter, brighter photo.');
         return;
