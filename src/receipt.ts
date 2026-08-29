@@ -129,5 +129,18 @@ export async function readReceipt(dataUrl: string): Promise<ScannedReceipt> {
 
   if (!parsed) throw new Error('The receipt reader returned something unreadable.');
   if (parsed.error) throw new Error(parsed.error);
-  return parsed;
+
+  /**
+   * The model reports the printed amount; the app stores minor units.
+   *
+   * Everything else in this codebase treats amount_minor as the printed value
+   * times one hundred, so returning raw yen made a ¥1,160 line show as 11.60.
+   * Converting here keeps the function's contract simple — it reports what the
+   * paper says — without a redeploy.
+   */
+  return {
+    ...parsed,
+    total: parsed.total === null || parsed.total === undefined ? null : Math.round(parsed.total * 100),
+    items: (parsed.items ?? []).map((i) => ({ ...i, amount_minor: Math.round(i.amount_minor * 100) })),
+  };
 }

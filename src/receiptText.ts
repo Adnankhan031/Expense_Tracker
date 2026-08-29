@@ -29,7 +29,7 @@ const NOT_AN_ITEM = [
   'お預り', '預り', 'お預かり', 'お釣り', '釣り', 'おつり', 'つり',
   'ポイント', 'point', 'カード', 'クレジット', '現金', '電子マネー',
   'クーポン', 'レジ', '責任者', '番号', 'tel', '電話', '点数', 'お買上',
-  '領収', 'レシート', '取引', '売上', '残高', 'バランス', '支払',
+  '領収', 'レシート', '取引', '売上', '残高', 'バランス', '支払', 'お買上', '買上計',
 ];
 
 /** Words that mean the amount should be subtracted. */
@@ -42,22 +42,45 @@ const DISCOUNT = ['値引', '割引', '引き', 'discount'];
  * ends the address 西早稲田 3-1-1 parsed as an item worth minus one yen: a
  * hyphenated street number ends in exactly the shape of a discount.
  */
-const TRAILING_AMOUNT = /(?:^|\s)(-?)\s*[¥￥\$]?\s*(\d{1,3}(?:,\d{3})+|\d+)\s*[※*軽]?\s*$/;
+const TRAILING_AMOUNT = /(?:^|\s)(-?)\s*[*#※¥￥\$]{0,2}\s*(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?\s*[※*軽円]?\s*\)?\s*$/;
 
-/** "2点 x 198" or "3コ×128" — a quantity breakdown, not its own purchase. */
-const QUANTITY_LINE = /^\s*\d+\s*[点個врコこ]?\s*[x×✕*]\s*[¥￥]?\s*[\d,]+\s*$/i;
+/**
+ * A quantity or unit-price line, which belongs to the item above it.
+ *
+ * Japanese tills print the breakdown underneath: "(¥116 X 2個)" beneath a
+ * ¥1,160 line. Read as items these both invent purchases and double the
+ * basket, so they are dropped in either order — count first or price first.
+ */
+const QUANTITY_LINE =
+  /^\s*\(?\s*(?:[¥￥]?\s*[\d,]+\s*[x×✕*]\s*\d+\s*[点個コこ]?|\d+\s*[点個コこ]?\s*[x×✕*]\s*[¥￥]?\s*[\d,]+)\s*\)?\s*$/i;
 
+/** Till codes printed before the product name: "510_", "#514_". */
+const PRODUCT_CODE = /^#?\s*\d{2,4}[_\-\s]\s*/;
+
+/**
+ * The printed amount, in minor units.
+ *
+ * Receipts print what you pay: ¥1,160, or 11.50 in a currency with cents. The
+ * app stores minor units — printed value times one hundred — everywhere, so
+ * converting here is what stops ¥1,160 from being shown as 11.60. Returning raw
+ * yen was the bug that made a ¥1,160 noodle pack read as 1.6.
+ */
 function amountOf(line: string): number | null {
   const m = narrowAscii(line).match(TRAILING_AMOUNT);
   if (!m) return null;
-  const digits = m[2].replace(/,/g, '');
-  const n = Number(digits);
-  if (!Number.isFinite(n)) return null;
-  return m[1] === '-' ? -Math.abs(n) : n;
+  const whole = Number(m[2].replace(/,/g, ''));
+  if (!Number.isFinite(whole)) return null;
+  const cents = m[3] ? Number(m[3].padEnd(2, '0')) : 0;
+  const minor = whole * 100 + cents;
+  return m[1] === '-' ? -minor : minor;
 }
 
 function nameOf(line: string): string {
-  return narrowAscii(line).replace(TRAILING_AMOUNT, '').replace(/[※*軽]+\s*$/, '').trim();
+  return narrowAscii(line)
+    .replace(TRAILING_AMOUNT, '')
+    .replace(/[※*軽]+\s*$/, '')
+    .replace(PRODUCT_CODE, '')
+    .trim();
 }
 
 function isExcluded(line: string): boolean {
@@ -105,7 +128,7 @@ export function parseReceiptText(raw: string[]): ParsedReceipt {
     const amount = amountOf(line);
 
     // 合計 is the one excluded line worth keeping, as the receipt's own total.
-    if (amount !== null && /合計|総計/.test(line) && !/小計/.test(line)) {
+    if (amount !== null && /合計|総計|お買上計|買上計/.test(line) && !/小計/.test(line)) {
       if (total === null) total = Math.abs(amount);
       continue;
     }

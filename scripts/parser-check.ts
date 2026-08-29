@@ -14,6 +14,7 @@ import { addDays, monthKey, pad2, todayLocal } from '../src/format';
 import { runItemChecks } from './item-check';
 import { runReceiptE2E } from './receipt-e2e';
 import { runReceiptTextChecks } from './receipt-text-check';
+import { runRealReceiptChecks } from './receipt-real-check';
 
 const categories: Category[] = SEED_CATEGORIES.map((c, i) => ({
   // ids are uuids in the app; the slug lives on `key`. The corpus asserts on the
@@ -134,6 +135,10 @@ const items = runItemChecks();
 
 if (items.pass !== items.total) {
   console.log('Item checks failed.');
+  process.exit(1);
+}
+
+if (!runRealReceiptChecks()) {
   process.exit(1);
 }
 

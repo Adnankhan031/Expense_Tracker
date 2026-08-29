@@ -44,12 +44,13 @@ export function runReceiptTextChecks(): boolean {
 
   // --- 1. a 業務スーパー basket, half-width katakana ---------------------
   const r = parseReceiptText(OCR_LINES);
-  const EXPECT: [string, number][] = [
+  // Printed yen. The parser returns minor units, so each is multiplied by 100.
+  const EXPECT: [string, number][] = ([
     ['ｷｬﾍﾞﾂ', 158], ['ﾆﾝｼﾞﾝ', 128], ['ﾊﾞﾅﾅ', 178], ['ﾄﾘﾓﾓﾆｸ 2kg', 1290],
     ['ﾌﾞﾀﾊﾞﾗ', 498], ['ｷﾞｭｳﾆｭｳ', 218], ['ﾀﾏｺﾞ 10ｺ', 268], ['ｺｼﾋｶﾘ 5kg', 2480],
     ['ｼｮｳﾕ 1L', 198], ['ﾎﾟﾃﾄﾁｯﾌﾟｽ', 128], ['ﾋﾞｰﾙ 350ml', 228],
     ['ﾚｲﾄｳｷﾞｮｳｻﾞ', 288], ['ｼｬﾝﾌﾟｰ', 598], ['ｾﾝｻﾞｲ', 248], ['値引', -100],
-  ];
+  ] as [string, number][]).map(([n, yen]) => [n, yen * 100] as [string, number]);
   for (const [name, amount] of EXPECT) {
     const hit = r.items.find((i) => i.name === name);
     if (!hit || hit.amount_minor !== amount) {
@@ -62,7 +63,7 @@ export function runReceiptTextChecks(): boolean {
     for (const i of r.items) console.log(`         ${String(i.amount_minor).padStart(7)}  ${JSON.stringify(i.name)}`);
     ok = false;
   }
-  if (r.merchant !== '業務スーパー' || r.purchased_on !== '2026-08-29' || r.total !== 7048) {
+  if (r.merchant !== '業務スーパー' || r.purchased_on !== '2026-08-29' || r.total !== 704800) {
     console.log(`  FAIL header ${r.merchant} / ${r.purchased_on} / ${r.total}`);
     ok = false;
   }
@@ -86,7 +87,7 @@ export function runReceiptTextChecks(): boolean {
     console.log(`  FAIL lawson ${lawson.items.length} items, expected 3: ${JSON.stringify(names)}`);
     ok = false;
   }
-  if (lawson.purchased_on !== '2026-08-27' || lawson.total !== 428) {
+  if (lawson.purchased_on !== '2026-08-27' || lawson.total !== 42800) {
     console.log(`  FAIL lawson header ${lawson.purchased_on} / ${lawson.total}`);
     ok = false;
   }
