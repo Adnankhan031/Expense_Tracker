@@ -221,7 +221,7 @@ export function initDb() {
 
   seedIfEmpty();
   syncSeedCategories();
-  if (version < 6) pruneMovedSeedKeywords();
+  if (version < 6) refreshSeedCatalogue();
   migrateIcons();
 }
 
@@ -317,7 +317,7 @@ function syncSeedCategories() {
  * Rewrite those rows once so the UI never has to render emoji.
  */
 /**
- * Drop keywords that have since moved to a different category.
+ * Repair a catalogue seeded by an older version of the app.
  *
  * `syncSeedCategories` only ever adds, so a word that belonged to one category
  * in an older seed stays on that row forever. "parents" was a Family & Kids
@@ -331,7 +331,7 @@ function syncSeedCategories() {
  * themselves appear in no seed list, so they are never touched, and a word two
  * seed categories share (like "gig") is dropped from neither.
  */
-function pruneMovedSeedKeywords() {
+function refreshSeedCatalogue() {
   const claimedBy = new Map<string, Set<string>>();
   for (const cat of SEED_CATEGORIES) {
     for (const k of cat.keywords) {
@@ -357,6 +357,13 @@ function pruneMovedSeedKeywords() {
     if (kept.length !== have.length) {
       db.runSync('UPDATE categories SET keywords=? WHERE key=?', [kept.join('|'), row.key]);
     }
+  }
+
+  // The first palette was Material pastels, and three categories were the same
+  // washed-out grey — so a chart dominated by one of them looked like it had no
+  // colour at all. Adopt the new palette once, at the same time.
+  for (const cat of SEED_CATEGORIES) {
+    db.runSync('UPDATE categories SET color=? WHERE key=?', [cat.color, cat.id]);
   }
 }
 

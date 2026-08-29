@@ -7,6 +7,9 @@ import {
   Music, Package, Phone, PiggyBank, Pill, Plane, Receipt, Repeat, Scissors, Shirt, ShoppingBag,
   ShoppingCart, Smartphone, Sparkles, Star, Stethoscope, Tag, TrainFront, TrendingUp, TriangleAlert,
   Tv, Undo2, Users, UtensilsCrossed, Wallet, Wifi, Wrench, Zap,
+  CalendarDays, Check, FolderOpen, HelpCircle, NotebookPen, Search, Siren, Sprout,
+  Telescope, TrendingDown, Trophy,
+  type LucideIcon,
 } from 'lucide-react-native';
 import { radius } from './theme';
 
@@ -28,6 +31,49 @@ export const ICON_MAP: Record<string, IconCmp> = {
 };
 
 export const ICON_CHOICES = Object.keys(ICON_MAP);
+
+/**
+ * Icons the interface uses to label its own things — records, empty states.
+ *
+ * Kept apart from ICON_MAP so they never turn up in the category icon picker,
+ * which should only offer icons that mean something for a spending category.
+ */
+const UI_ICONS: Record<string, LucideIcon> = {
+  'trending-up': TrendingUp,
+  'trending-down': TrendingDown,
+  siren: Siren,
+  alert: TriangleAlert,
+  check: Check,
+  telescope: Telescope,
+  piggy: PiggyBank,
+  zap: Zap,
+  leaf: Leaf,
+  flame: Flame,
+  trophy: Trophy,
+  receipt: Receipt,
+  note: Banknote,
+  chart: BarChart3,
+  calendar: CalendarDays,
+  search: Search,
+  sprout: Sprout,
+  folder: FolderOpen,
+  question: HelpCircle,
+  notebook: NotebookPen,
+};
+
+/** An icon named by either set — UI icons win, category icons are the fallback. */
+export function UiIcon({
+  name,
+  size = 20,
+  color,
+}: {
+  name: string;
+  size?: number;
+  color?: string;
+}) {
+  const Cmp = UI_ICONS[name] ?? ICON_MAP[name] ?? Package;
+  return <Cmp size={size} color={color} strokeWidth={2.1} />;
+}
 
 /** Categories seeded before the icon set existed store an emoji. */
 const EMOJI_TO_ICON: Record<string, string> = {

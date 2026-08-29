@@ -17,6 +17,7 @@ import {
   todayLocal,
 } from './format';
 import type { Category, TxnType } from './db';
+import { UiIcon } from './icons';
 
 /* ------------------------------------------------------------------ */
 /* calendar day picker                                                 */
@@ -227,7 +228,7 @@ export function CategoryPickerSheet({
           onPress={() => { tap(); onPick(null); }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: 10 }}
         >
-          <IconBadge icon="🗂" color={t.dim} />
+          <IconBadge icon={<UiIcon name="folder" size={17} color={t.dim} />} color={t.dim} />
           <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600', flex: 1 }}>All categories</Text>
           {value === null && <Check size={20} color={t.brand} />}
         </Pressable>

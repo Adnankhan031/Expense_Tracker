@@ -22,7 +22,7 @@ import {
   pad2,
   shiftMonth,
 } from '../../src/format';
-import { IconTile } from '../../src/icons';
+import { IconTile, UiIcon } from '../../src/icons';
 
 export default function HistoryScreen() {
   const t = useTheme();
@@ -236,7 +236,7 @@ export default function HistoryScreen() {
         )}
         ListEmptyComponent={
           <EmptyState
-            icon="🔍"
+            icon={<UiIcon name="search" color={t.faint} />}
             title="Nothing here"
             body={
               q || categoryId || selectedDay

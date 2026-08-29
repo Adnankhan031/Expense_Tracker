@@ -9,7 +9,7 @@ import { useData } from '../../src/store';
 import { radius, space, useTheme } from '../../src/theme';
 import { Card, EmptyState, IconBadge, Money, Screen, SectionTitle, tap } from '../../src/ui';
 import { dayLabel, todayLocal } from '../../src/format';
-import { IconTile } from '../../src/icons';
+import { IconTile, UiIcon } from '../../src/icons';
 
 export default function LearnedScreen() {
   const t = useTheme();
@@ -102,7 +102,7 @@ export default function LearnedScreen() {
         {rows.length === 0 ? (
           <Card>
             <EmptyState
-              icon="🌱"
+              icon={<UiIcon name="sprout" color={t.faint} />}
               title="Nothing learned yet"
               body="Correct a category on any entry and the word you typed is remembered here."
             />

@@ -8,7 +8,7 @@ import { firstTxnDate } from '../../src/db';
 import { useData, useSettings } from '../../src/store';
 import { cycleEndFor, cycleLabel, currentCycle } from '../../src/cycle';
 import { radius, space, useTheme } from '../../src/theme';
-import { Card, Chip, EmptyState, Money, Screen, SectionTitle, Segmented, tap } from '../../src/ui';
+import { Card, Chip, EmptyState, IconBadge, Money, Screen, SectionTitle, Segmented, tap } from '../../src/ui';
 import { DatePickerSheet } from '../../src/pickers';
 import {
   addDays,
@@ -20,7 +20,7 @@ import {
   shiftMonth,
   todayLocal,
 } from '../../src/format';
-import { CategoryIcon } from '../../src/icons';
+import { CategoryIcon, UiIcon } from '../../src/icons';
 
 type Period = 'month' | '3m' | '6m' | '12m' | 'all' | 'custom';
 
@@ -169,7 +169,7 @@ export default function AnalyticsScreen() {
 
         {stats.count === 0 ? (
           <Card style={{ marginTop: space.lg }}>
-            <EmptyState icon="📊" title="No data in this window" body="Log a few expenses and the charts fill in automatically." />
+            <EmptyState icon={<UiIcon name="chart" color={t.faint} />} title="No data in this window" body="Log a few expenses and the charts fill in automatically." />
           </Card>
         ) : (
           <>
@@ -322,7 +322,7 @@ export default function AnalyticsScreen() {
               <View style={{ gap: 14 }}>
                 {stats.biggestDay && (
                   <RecordRow
-                    icon="🔥"
+                    icon="flame"
                     title="Heaviest day"
                     sub={dayLabel(stats.biggestDay.date)}
                     value={<Money minor={stats.biggestDay.total} size={15} />}
@@ -330,14 +330,14 @@ export default function AnalyticsScreen() {
                 )}
                 {stats.biggestTxn && (
                   <RecordRow
-                    icon="💸"
+                    icon="trophy"
                     title="Biggest single expense"
                     sub={`${stats.biggestTxn.note} · ${dayLabel(stats.biggestTxn.date)}`}
                     value={<Money minor={stats.biggestTxn.amount} size={15} />}
                   />
                 )}
                 <RecordRow
-                  icon="🧾"
+                  icon="receipt"
                   title="Average entry"
                   sub={`${stats.count} entries logged`}
                   value={<Money minor={stats.count ? Math.round(stats.expense / stats.count) : 0} size={15} />}
@@ -419,7 +419,7 @@ function RecordRow({ icon, title, sub, value }: { icon: string; title: string; s
   const t = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
-      
+      <IconBadge icon={<UiIcon name={icon} size={17} color={t.brand} />} color={t.brand} size={36} />
       <View style={{ flex: 1 }}>
         <Text style={{ color: t.ink, fontSize: 13.5, fontWeight: '600' }}>{title}</Text>
         <Text style={{ color: t.faint, fontSize: 11.5, marginTop: 1 }} numberOfLines={1}>

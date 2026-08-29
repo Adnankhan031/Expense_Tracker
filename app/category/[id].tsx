@@ -17,7 +17,7 @@ import {
   monthStart,
   shiftMonth,
 } from '../../src/format';
-import { IconTile } from '../../src/icons';
+import { IconTile, UiIcon } from '../../src/icons';
 
 type Span = '1m' | '6m' | '12m';
 
@@ -63,7 +63,7 @@ export default function CategoryDetail() {
   if (!category) {
     return (
       <Screen>
-        <EmptyState icon="🤔" title="Category not found" />
+        <EmptyState icon={<UiIcon name="question" color={t.faint} />} title="Category not found" />
       </Screen>
     );
   }
@@ -159,7 +159,7 @@ export default function CategoryDetail() {
         <SectionTitle>Entries</SectionTitle>
         {rows.length === 0 ? (
           <Card>
-            <EmptyState icon="🗒" title="No entries yet" body={`Nothing logged under ${category.name} in this window.`} />
+            <EmptyState icon={<UiIcon name="notebook" color={t.faint} />} title="No entries yet" body={`Nothing logged under ${category.name} in this window.`} />
           </Card>
         ) : (
           <Card>

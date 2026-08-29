@@ -21,7 +21,7 @@ import { Card, EmptyState, IconBadge, Money, Screen, SectionTitle, tap } from '.
 import { MonthPickerSheet } from '../../src/pickers';
 import { addDays, currentMonth, dayLabel, formatMoney, monthLabel, shiftMonth, shortDayLabel, todayLocal } from '../../src/format';
 import { TxnEditor } from '../../src/TxnEditor';
-import { CategoryIcon, IconTile } from '../../src/icons';
+import { CategoryIcon, IconTile, UiIcon } from '../../src/icons';
 
 export default function DashboardScreen() {
   const t = useTheme();
@@ -97,7 +97,7 @@ export default function DashboardScreen() {
         {stats.count === 0 ? (
           <Card>
             <EmptyState
-              icon="🗓"
+              icon={<UiIcon name="calendar" color={t.faint} />}
               title={`Nothing logged in ${cycleLabel(cycle, cycleStartDay)}`}
               body={
                 isCurrent
