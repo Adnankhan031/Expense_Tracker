@@ -60,9 +60,10 @@ async function reconcileCatalogue(userId: string) {
         if (remoteId === row.id) continue;
 
         if (table === 'categories') {
-          db.runSync('UPDATE transactions SET category_id=? WHERE category_id=?', [remoteId, row.id]);
-          db.runSync('UPDATE budgets      SET category_id=? WHERE category_id=?', [remoteId, row.id]);
-          db.runSync('UPDATE aliases      SET category_id=? WHERE category_id=?', [remoteId, row.id]);
+          db.runSync('UPDATE transactions      SET category_id=? WHERE category_id=?', [remoteId, row.id]);
+          db.runSync('UPDATE budgets           SET category_id=? WHERE category_id=?', [remoteId, row.id]);
+          db.runSync('UPDATE aliases           SET category_id=? WHERE category_id=?', [remoteId, row.id]);
+          db.runSync('UPDATE transaction_items SET category_id=? WHERE category_id=?', [remoteId, row.id]);
         } else {
           db.runSync('UPDATE transactions SET account_id=? WHERE account_id=?', [remoteId, row.id]);
         }
@@ -86,9 +87,14 @@ async function reconcileCatalogue(userId: string) {
       for (const r of missing as Record<string, unknown>[]) {
         if (table === 'categories') {
           db.runSync(
-            'INSERT OR REPLACE INTO categories (id,key,name,icon,color,kind,keywords,sort,archived,user_id) VALUES (?,?,?,?,?,?,?,?,?,?)',
+            `INSERT OR REPLACE INTO categories
+               (id,key,name,icon,color,kind,keywords,sort,archived,user_id,parent_key)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+            // parent_key has to come across, or a subcategory arrives looking
+            // like a top-level one and shows up in every category picker.
             [r.id as string, r.key as string, r.name as string, r.icon as string, r.color as string,
-             r.kind as string, (r.keywords as string) ?? '', (r.sort as number) ?? 0, r.archived ? 1 : 0, userId]
+             r.kind as string, (r.keywords as string) ?? '', (r.sort as number) ?? 0, r.archived ? 1 : 0,
+             userId, (r.parent_key as string) ?? null]
           );
         } else {
           db.runSync(
@@ -132,6 +138,7 @@ async function pushTransactions(userId: string): Promise<number> {
     occurred_at: r.occurred_at,
     local_date: r.local_date,
     note: r.note,
+    merchant: r.merchant,
     raw_input: r.raw_input,
     source: r.source,
     confidence: r.confidence,
@@ -177,15 +184,95 @@ async function pullTransactions(userId: string): Promise<number> {
 
       db.runSync(
         `INSERT OR REPLACE INTO transactions
-         (id,amount_minor,type,category_id,account_id,method,occurred_at,local_date,note,raw_input,source,confidence,reimbursable,reimbursed_at,created_at,updated_at,deleted_at,user_id)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         (id,amount_minor,type,category_id,account_id,method,occurred_at,local_date,note,merchant,raw_input,source,confidence,reimbursable,reimbursed_at,created_at,updated_at,deleted_at,user_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           r.id as string, r.amount_minor as number, r.type as string, r.category_id as string,
           (r.account_id as string) ?? null, (r.method as string) ?? null, r.occurred_at as string,
-          r.local_date as string, (r.note as string) ?? null, (r.raw_input as string) ?? null,
+          r.local_date as string, (r.note as string) ?? null, (r.merchant as string) ?? null,
+          (r.raw_input as string) ?? null,
           (r.source as string) ?? 'chat', (r.confidence as number) ?? 1, r.reimbursable ? 1 : 0,
           (r.reimbursed_at as string) ?? null, r.created_at as string, r.updated_at as string,
           (r.deleted_at as string) ?? null, userId,
+        ]
+      );
+    }
+  });
+
+  return data.length;
+}
+
+/**
+ * Receipt items, on the same delta watermark as transactions.
+ *
+ * They are pushed after their parent so a foreign key never arrives before the
+ * row it points at, and pulled before it so the breakdown is present the first
+ * time the transaction renders.
+ */
+async function pushItems(userId: string): Promise<number> {
+  const sb = supabase();
+  const rows = db.getAllSync<Record<string, unknown>>(
+    'SELECT * FROM transaction_items WHERE user_id IS NULL OR user_id != ? OR updated_at > IFNULL((SELECT value FROM settings WHERE key = ?), ?)',
+    [userId, 'sync.lastPush', EPOCH]
+  );
+  if (!rows.length) return 0;
+
+  const payload = rows.map((r) => ({
+    id: r.id,
+    user_id: userId,
+    transaction_id: r.transaction_id,
+    name: r.name,
+    normalised: r.normalised,
+    qty: r.qty,
+    amount_minor: r.amount_minor,
+    category_id: r.category_id,
+    confidence: r.confidence,
+    sort: r.sort,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    deleted_at: r.deleted_at,
+  }));
+
+  for (let i = 0; i < payload.length; i += 200) {
+    const { error } = await sb.from('transaction_items').upsert(payload.slice(i, i + 200), { onConflict: 'id' });
+    if (error) throw error;
+  }
+
+  db.runSync('UPDATE transaction_items SET user_id = ? WHERE user_id IS NULL OR user_id != ?', [userId, userId]);
+  return payload.length;
+}
+
+async function pullItems(userId: string): Promise<number> {
+  const sb = supabase();
+  const since = getSetting(LAST_PULL) ?? EPOCH;
+
+  const { data, error } = await sb
+    .from('transaction_items')
+    .select('*')
+    .eq('user_id', userId)
+    .gt('updated_at', since)
+    .order('updated_at', { ascending: true })
+    .limit(5000);
+  if (error) throw error;
+  if (!data?.length) return 0;
+
+  db.withTransactionSync(() => {
+    for (const r of data as Record<string, unknown>[]) {
+      const local = db.getFirstSync<{ updated_at: string }>(
+        'SELECT updated_at FROM transaction_items WHERE id = ?',
+        [r.id as string]
+      );
+      if (local && local.updated_at >= (r.updated_at as string)) continue;
+
+      db.runSync(
+        `INSERT OR REPLACE INTO transaction_items
+         (id,user_id,transaction_id,name,normalised,qty,amount_minor,category_id,confidence,sort,created_at,updated_at,deleted_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          r.id as string, userId, r.transaction_id as string, r.name as string,
+          (r.normalised as string) ?? '', (r.qty as number) ?? 1, r.amount_minor as number,
+          (r.category_id as string) ?? null, (r.confidence as number) ?? 1, (r.sort as number) ?? 0,
+          r.created_at as string, r.updated_at as string, (r.deleted_at as string) ?? null,
         ]
       );
     }
@@ -364,8 +451,10 @@ export async function syncNow(userId: string): Promise<SyncResult> {
   try {
     await reconcileCatalogue(userId);
     const pushed = await pushTransactions(userId);
+    const pushedItems = await pushItems(userId);
     await syncSmallTables(userId);
     const settingsChanged = await syncSettings(userId);
+    const pulledItems = await pullItems(userId);
     const pulled = await pullTransactions(userId);
 
     // Only advance the watermarks once everything succeeded, so a failure part
@@ -375,7 +464,15 @@ export async function syncNow(userId: string): Promise<SyncResult> {
     setSetting('sync.lastOk', startedAt);
     setSetting('sync.lastError', '');
 
-    return { ok: true, pushed, pulled, settingsChanged, at: startedAt };
+    // Items count toward the totals so the caller knows to reload the screens
+    // when only a receipt breakdown changed.
+    return {
+      ok: true,
+      pushed: pushed + pushedItems,
+      pulled: pulled + pulledItems,
+      settingsChanged,
+      at: startedAt,
+    };
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);
     setSetting('sync.lastError', error);

@@ -14,6 +14,7 @@ const categories: Category[] = SEED_CATEGORIES.map((c, i) => ({
   // slug, so id and key are both the slug here.
   id: c.id,
   key: c.id,
+  parent_key: null,
   name: c.name,
   icon: c.icon,
   color: c.color,

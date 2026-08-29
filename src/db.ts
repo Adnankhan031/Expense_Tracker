@@ -1,5 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import { SEED_ACCOUNTS, SEED_CATEGORIES } from './seed';
+import { SUB_CATEGORIES } from './items';
+import { foldJa } from './jp';
 import { ICON_MAP, resolveIconName } from './icons';
 import { isUuid, uuid } from './uuid';
 import { fromLocalDate, toLocalDate } from './format';
@@ -20,6 +22,28 @@ export type Category = {
   keywords: string;
   sort: number;
   archived: number;
+  /** Set when this is a receipt-line subcategory, naming its parent's key. */
+  parent_key: string | null;
+};
+
+/** One line of a receipt, under the transaction that paid for it. */
+export type TxnItem = {
+  id: string;
+  user_id: string | null;
+  transaction_id: string;
+  /** As printed on the receipt, untouched. */
+  name: string;
+  /** `foldJa(name)`, so learning and lookup do not depend on script. */
+  normalised: string;
+  qty: number;
+  amount_minor: number;
+  /** A categories row — either a subcategory or a top-level one. */
+  category_id: string | null;
+  confidence: number;
+  sort: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 };
 
 export type Account = { id: string; key: string; name: string; kind: string; icon: string; sort: number; archived: number };
@@ -217,10 +241,47 @@ export function initDb() {
     db.execSync('PRAGMA user_version = 4');
   }
 
-  db.execSync('PRAGMA user_version = 6');
+  if (version < 7) {
+    // Subcategories are categories rows with a parent, so they inherit sync,
+    // the icon/colour editor and archiving for free. `listCategories` filters
+    // them out, which is why no existing screen had to change.
+    try {
+      db.execSync('ALTER TABLE categories ADD COLUMN parent_key TEXT');
+    } catch {
+      // already present
+    }
+    try {
+      db.execSync('ALTER TABLE transactions ADD COLUMN merchant TEXT');
+    } catch {
+      // already present
+    }
+
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS transaction_items (
+        id TEXT PRIMARY KEY NOT NULL,
+        user_id TEXT,
+        transaction_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        normalised TEXT NOT NULL DEFAULT '',
+        qty REAL NOT NULL DEFAULT 1,
+        amount_minor INTEGER NOT NULL,
+        category_id TEXT,
+        confidence REAL NOT NULL DEFAULT 1,
+        sort INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_item_txn ON transaction_items(transaction_id);
+      CREATE INDEX IF NOT EXISTS idx_item_updated ON transaction_items(updated_at);
+    `);
+  }
+
+  db.execSync('PRAGMA user_version = 7');
 
   seedIfEmpty();
   syncSeedCategories();
+  syncSeedSubCategories();
   if (version < 6) refreshSeedCatalogue();
   migrateIcons();
 }
@@ -367,6 +428,42 @@ function refreshSeedCatalogue() {
   }
 }
 
+/**
+ * Insert any shipped subcategory that this account does not have yet.
+ *
+ * Same shape as `syncSeedCategories`: matched on key, keywords merged rather
+ * than overwritten, name/colour/icon left alone once they exist so a rename
+ * survives an update.
+ */
+function syncSeedSubCategories() {
+  const existing = new Map(
+    db
+      .getAllSync<{ key: string; keywords: string }>(
+        'SELECT key, keywords FROM categories WHERE parent_key IS NOT NULL'
+      )
+      .map((r) => [r.key, r.keywords])
+  );
+  const maxSort =
+    db.getFirstSync<{ m: number }>('SELECT IFNULL(MAX(sort),0) as m FROM categories')?.m ?? 0;
+  let next = maxSort + 1;
+
+  for (const sub of SUB_CATEGORIES) {
+    const have = existing.get(sub.key);
+    if (have === undefined) {
+      db.runSync(
+        `INSERT INTO categories (id,key,name,icon,color,kind,keywords,sort,archived,parent_key)
+         VALUES (?,?,?,?,?,'expense',?,?,0,?)`,
+        [uuid(), sub.key, sub.name, sub.icon, sub.color, sub.keywords.join('|'), next++, sub.parent]
+      );
+      continue;
+    }
+    const merged = new Set([...have.split('|').filter(Boolean), ...sub.keywords]);
+    if (merged.size !== have.split('|').filter(Boolean).length) {
+      db.runSync('UPDATE categories SET keywords=? WHERE key=?', [[...merged].join('|'), sub.key]);
+    }
+  }
+}
+
 function migrateIcons() {
   const rows = db.getAllSync<{ id: string; icon: string }>('SELECT id, icon FROM categories');
   for (const r of rows) {
@@ -409,10 +506,32 @@ function seedIfEmpty() {
 /* categories & accounts                                               */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Spending categories — the ones a whole transaction can belong to.
+ *
+ * Deliberately excludes subcategories. They live in this table so they inherit
+ * sync and the icon editor, but a receipt line is not something you file a
+ * whole transaction under, and every picker in the app reads this function.
+ */
 export const listCategories = (includeArchived = false): Category[] =>
   db.getAllSync<Category>(
-    `SELECT * FROM categories ${includeArchived ? '' : 'WHERE archived = 0'} ORDER BY kind DESC, sort ASC, name ASC`
+    `SELECT * FROM categories
+      WHERE parent_key IS NULL ${includeArchived ? '' : 'AND archived = 0'}
+      ORDER BY kind DESC, sort ASC, name ASC`
   );
+
+/** Receipt-line subcategories, optionally just those under one parent. */
+export const listSubCategories = (parentKey?: string): Category[] =>
+  db.getAllSync<Category>(
+    `SELECT * FROM categories
+      WHERE parent_key IS NOT NULL ${parentKey ? 'AND parent_key = ?' : ''} AND archived = 0
+      ORDER BY sort ASC, name ASC`,
+    parentKey ? [parentKey] : []
+  );
+
+/** Everything, both levels — for resolving an item's category by id. */
+export const listAllCategories = (): Category[] =>
+  db.getAllSync<Category>('SELECT * FROM categories ORDER BY sort ASC');
 
 export const getCategory = (id: string): Category | null =>
   db.getFirstSync<Category>('SELECT * FROM categories WHERE id = ?', [id]);
@@ -555,6 +674,109 @@ export const softDeleteTxn = (id: string) =>
 
 export const restoreTxn = (id: string) =>
   db.runSync('UPDATE transactions SET deleted_at=NULL, updated_at=? WHERE id=?', [nowIso(), id]);
+
+/* ------------------------------------------------------------------ */
+/* receipt line items                                                  */
+/* ------------------------------------------------------------------ */
+
+export type NewTxnItem = {
+  name: string;
+  amount_minor: number;
+  qty?: number;
+  category_id?: string | null;
+  confidence?: number;
+};
+
+export const listItems = (transactionId: string): TxnItem[] =>
+  db.getAllSync<TxnItem>(
+    'SELECT * FROM transaction_items WHERE transaction_id = ? AND deleted_at IS NULL ORDER BY sort ASC',
+    [transactionId]
+  );
+
+/**
+ * Replace a transaction's items wholesale.
+ *
+ * Editing a receipt means reordering, merging and deleting lines at once, so
+ * diffing them individually buys nothing. Existing rows are tombstoned rather
+ * than dropped so the deletion still reaches the other device.
+ */
+export function replaceItems(transactionId: string, items: NewTxnItem[], userId?: string | null) {
+  const now = nowIso();
+  db.withTransactionSync(() => {
+    db.runSync(
+      'UPDATE transaction_items SET deleted_at=?, updated_at=? WHERE transaction_id=? AND deleted_at IS NULL',
+      [now, now, transactionId]
+    );
+    items.forEach((it, i) => {
+      db.runSync(
+        `INSERT INTO transaction_items
+           (id,user_id,transaction_id,name,normalised,qty,amount_minor,category_id,confidence,sort,created_at,updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          uuid(),
+          userId ?? null,
+          transactionId,
+          it.name,
+          foldJa(it.name),
+          it.qty ?? 1,
+          it.amount_minor,
+          it.category_id ?? null,
+          it.confidence ?? 1,
+          i,
+          now,
+          now,
+        ]
+      );
+    });
+  });
+}
+
+/**
+ * What the items add up to, against what the receipt says.
+ *
+ * Japanese receipts carry tax and member discounts on their own lines, so the
+ * items rarely equal the total exactly. The gap is shown to the user as a
+ * labelled line rather than being spread across the items, which would make
+ * every figure subtly wrong.
+ */
+export function itemsReconciliation(transactionId: string): {
+  itemTotal: number;
+  txnTotal: number;
+  gap: number;
+} {
+  const itemTotal =
+    db.getFirstSync<{ s: number }>(
+      'SELECT IFNULL(SUM(amount_minor),0) as s FROM transaction_items WHERE transaction_id=? AND deleted_at IS NULL',
+      [transactionId]
+    )?.s ?? 0;
+  const txnTotal = getTxn(transactionId)?.amount_minor ?? 0;
+  return { itemTotal, txnTotal, gap: txnTotal - itemTotal };
+}
+
+/** Roll a receipt up by category, for the breakdown under a transaction. */
+export function itemsByCategory(transactionId: string): {
+  category_id: string | null;
+  name: string;
+  icon: string;
+  color: string;
+  total: number;
+  count: number;
+}[] {
+  return db.getAllSync(
+    `SELECT i.category_id,
+            IFNULL(c.name,'Unsorted') as name,
+            IFNULL(c.icon,'package')  as icon,
+            IFNULL(c.color,'#94A3B8') as color,
+            SUM(i.amount_minor) as total,
+            COUNT(*) as count
+       FROM transaction_items i
+       LEFT JOIN categories c ON c.id = i.category_id
+      WHERE i.transaction_id = ? AND i.deleted_at IS NULL
+      GROUP BY i.category_id
+      ORDER BY total DESC`,
+    [transactionId]
+  );
+}
 
 const TXN_SELECT = `
   SELECT t.*, c.name as cat_name, c.icon as cat_icon, c.color as cat_color
