@@ -277,7 +277,21 @@ export function initDb() {
     `);
   }
 
-  db.execSync('PRAGMA user_version = 7');
+  if (version < 8) {
+    // A translation is the same for everyone and never expires, so it is worth
+    // keeping forever: the same products come back every shop, and a cached one
+    // costs nothing and appears instantly.
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS translations (
+        normalised TEXT PRIMARY KEY NOT NULL,
+        original TEXT NOT NULL,
+        en TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+    `);
+  }
+
+  db.execSync('PRAGMA user_version = 8');
 
   seedIfEmpty();
   syncSeedCategories();
@@ -674,6 +688,42 @@ export const softDeleteTxn = (id: string) =>
 
 export const restoreTxn = (id: string) =>
   db.runSync('UPDATE transactions SET deleted_at=NULL, updated_at=? WHERE id=?', [nowIso(), id]);
+
+/* ------------------------------------------------------------------ */
+/* translations                                                        */
+/* ------------------------------------------------------------------ */
+
+/** English for the names already seen. Keyed by the folded form. */
+export function cachedTranslations(names: string[]): Map<string, string> {
+  const out = new Map<string, string>();
+  if (!names.length) return out;
+
+  const keys = [...new Set(names.map((n) => foldJa(n)).filter(Boolean))];
+  for (let i = 0; i < keys.length; i += 200) {
+    const chunk = keys.slice(i, i + 200);
+    const rows = db.getAllSync<{ normalised: string; en: string }>(
+      `SELECT normalised, en FROM translations WHERE normalised IN (${chunk.map(() => '?').join(',')})`,
+      chunk
+    );
+    for (const r of rows) out.set(r.normalised, r.en);
+  }
+  return out;
+}
+
+export function rememberTranslations(pairs: { original: string; en: string }[]) {
+  if (!pairs.length) return;
+  const now = nowIso();
+  db.withTransactionSync(() => {
+    for (const p of pairs) {
+      const key = foldJa(p.original);
+      if (!key || !p.en.trim()) continue;
+      db.runSync(
+        'INSERT OR REPLACE INTO translations (normalised, original, en, created_at) VALUES (?,?,?,?)',
+        [key, p.original, p.en.trim(), now]
+      );
+    }
+  });
+}
 
 /* ------------------------------------------------------------------ */
 /* receipt line items                                                  */

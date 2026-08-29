@@ -5,6 +5,8 @@ import TextRecognition, { TextRecognitionScript } from '@react-native-ml-kit/tex
 
 import { parseReceiptText } from './receiptText';
 import { rowsFromBlocks } from './receiptRows';
+import { cachedTranslations, rememberTranslations } from './db';
+import { foldJa } from './jp';
 import { supabase, supabaseConfig } from './supabase';
 
 export type ScannedItem = { name: string; amount_minor: number; qty?: number };
@@ -144,4 +146,61 @@ export async function readReceipt(dataUrl: string): Promise<ScannedReceipt> {
     total: parsed.total === null || parsed.total === undefined ? null : Math.round(parsed.total * 100),
     items: (parsed.items ?? []).map((i) => ({ ...i, amount_minor: Math.round(i.amount_minor * 100) })),
   };
+}
+
+/**
+ * English names for a receipt's items.
+ *
+ * Everything already seen comes from the local cache — free, instant, offline —
+ * and only genuinely new products are sent, all of them in a single request
+ * rather than one per line. You buy the same things repeatedly, so after a few
+ * shops most of a receipt translates without touching the network at all.
+ *
+ * Never throws: a translation is a nicety, and failing to get one must not stop
+ * a receipt being saved.
+ */
+export async function translateNames(names: string[]): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  if (!names.length) return result;
+
+  const cache = cachedTranslations(names);
+  for (const n of names) {
+    const hit = cache.get(foldJa(n));
+    if (hit) result.set(n, hit);
+  }
+
+  const missing = [...new Set(names.filter((n) => !result.has(n) && n.trim()))];
+  if (!missing.length) return result;
+
+  try {
+    const { url, key } = supabaseConfig();
+    if (!url || !key) return result;
+    const { data } = await supabase().auth.getSession();
+    const token = data.session?.access_token ?? key;
+
+    const res = await fetch(`${url}/functions/v1/read-receipt`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, apikey: key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ names: missing }),
+    });
+    if (!res.ok) return result;
+
+    const body = await res.json();
+    const list: unknown = body?.translations;
+    if (!Array.isArray(list)) return result;
+
+    const learned: { original: string; en: string }[] = [];
+    missing.forEach((original, i) => {
+      const en = list[i];
+      // An unchanged string means the model could not read it; not worth storing.
+      if (typeof en !== 'string' || !en.trim() || en.trim() === original) return;
+      result.set(original, en.trim());
+      learned.push({ original, en: en.trim() });
+    });
+    rememberTranslations(learned);
+  } catch {
+    // Offline, or the quota is gone. The Japanese names still work.
+  }
+
+  return result;
 }

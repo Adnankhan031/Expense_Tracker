@@ -8,7 +8,7 @@ import { useData } from './store';
 import { radius, space, useTheme } from './theme';
 import { Button, Card, Money, Sheet, tap } from './ui';
 import { CategoryIcon } from './icons';
-import { captureReceipt, pickReceipt, readReceipt, readReceiptOnDevice } from './receipt';
+import { captureReceipt, pickReceipt, readReceipt, readReceiptOnDevice, translateNames } from './receipt';
 
 type Row = {
   /** Local key only — rows are replaced wholesale on save. */
@@ -20,6 +20,8 @@ type Row = {
    *  silently overwrites their decision. */
   pinned: boolean;
   auto: boolean;
+  /** As printed on the receipt, kept when `name` has been translated. */
+  original?: string;
 };
 
 /** Digits, one dot, and a leading minus for discount lines. */
@@ -52,7 +54,8 @@ export type ReceiptDraft = {
   merchant: string | null;
   date: string;
   total: number;
-  lines: { name: string; amount_minor: number }[];
+  /** `name` is what the receipt printed; `en` is its translation, when we have one. */
+  lines: { name: string; en?: string | null; amount_minor: number }[];
 };
 
 export function ItemsEditor({
@@ -98,12 +101,14 @@ export function ItemsEditor({
     if (!txnId && draft) {
       setRows(
         draft.lines.map((l) => {
+          // Classify on the Japanese name; show the English one.
           const hit = classifyItem(l.name, ctx);
           const key = hit.subKey ?? hit.categoryKey;
           const cat = key ? byKey.get(key) : undefined;
           return {
             uid: `d${seq++}`,
-            name: l.name,
+            name: l.en || l.name,
+            original: l.en ? l.name : undefined,
             amount: String(l.amount_minor / 100),
             categoryId: cat?.id ?? null,
             pinned: false,
@@ -134,7 +139,9 @@ export function ItemsEditor({
     setRows((rs) =>
       rs.map((r) => {
         if (r.uid !== uid || r.pinned || !r.name.trim()) return r;
-        const hit = classifyItem(r.name, ctx);
+        // The dictionary and the learned aliases are Japanese, so match on
+        // what the receipt said rather than on the English label.
+        const hit = classifyItem(r.original ?? r.name, ctx);
         const key = hit.subKey ?? hit.categoryKey;
         const cat = key ? byKey.get(key) : undefined;
         return cat ? { ...r, categoryId: cat.id, auto: true } : r;
@@ -180,6 +187,22 @@ export function ItemsEditor({
 
       // Replace empty starter rows; keep anything already typed.
       setRows((rs) => [...rs.filter((r) => r.name.trim() || Number(r.amount) > 0), ...scanned]);
+
+      /**
+       * Translate before showing, so the list is readable straight away.
+       *
+       * Classification uses the Japanese name — the dictionary is Japanese and
+       * the learned aliases are keyed on it — so the original is kept on the
+       * row and only the label changes.
+       */
+      const english = await translateNames(scanned.map((r) => r.name));
+      for (const r of scanned) {
+        const en = english.get(r.name);
+        if (en) {
+          r.original = r.name;
+          r.name = en;
+        }
+      }
 
       const named = scanned.filter((r) => r.categoryId).length;
       setScanNote(
@@ -334,6 +357,12 @@ export function ItemsEditor({
                     <X size={16} color={t.faint} />
                   </Pressable>
                 </View>
+
+                {!!r.original && (
+                  <Text style={{ color: t.faint, fontSize: 11.5, marginTop: 3 }} numberOfLines={1}>
+                    {r.original}
+                  </Text>
+                )}
 
                 <Pressable
                   onPress={() => {

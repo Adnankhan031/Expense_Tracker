@@ -41,6 +41,7 @@ import {
   pickReceipt,
   readReceipt,
   readReceiptOnDevice,
+  translateNames,
   type ScannedItem,
 } from '../../src/receipt';
 import { dayLabel, formatMoney, shortDayLabel, todayLocal } from '../../src/format';
@@ -169,11 +170,19 @@ export default function ChatScreen() {
         setScanError('No line items found. Try a straighter, brighter photo, with the whole receipt in frame.');
         return;
       }
+      // Translate before the draft opens, so the list is readable at a glance.
+      // The Japanese original rides along for classification.
+      const english = await translateNames(receipt.items.map((i: ScannedItem) => i.name));
+
       setDraft({
         merchant: receipt.merchant,
         date: receipt.purchased_on || pinnedDate,
         total: receipt.total ?? receipt.items.reduce((a: number, i: ScannedItem) => a + i.amount_minor, 0),
-        lines: receipt.items.map((i: ScannedItem) => ({ name: i.name, amount_minor: i.amount_minor })),
+        lines: receipt.items.map((i: ScannedItem) => ({
+          name: i.name,
+          en: english.get(i.name) ?? null,
+          amount_minor: i.amount_minor,
+        })),
       });
     } catch (e) {
       setScanError(e instanceof Error ? e.message : 'Something went wrong.');
