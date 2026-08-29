@@ -12,6 +12,7 @@ import { addDays, monthKey, pad2, todayLocal } from '../src/format';
 // input to the runtime fingerprint, so adding a script strands every installed
 // app on the old runtime until it is reinstalled.
 import { runItemChecks } from './item-check';
+import { runReceiptE2E } from './receipt-e2e';
 
 const categories: Category[] = SEED_CATEGORIES.map((c, i) => ({
   // ids are uuids in the app; the slug lives on `key`. The corpus asserts on the
@@ -132,6 +133,10 @@ const items = runItemChecks();
 
 if (items.pass !== items.total) {
   console.log('Item checks failed.');
+  process.exit(1);
+}
+
+if (!runReceiptE2E()) {
   process.exit(1);
 }
 
