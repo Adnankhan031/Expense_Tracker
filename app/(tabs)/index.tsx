@@ -169,11 +169,13 @@ export default function ChatScreen() {
        * scan that still happens.
        */
       let receipt: Awaited<ReturnType<typeof readReceipt>> | null = null;
+      let fellBack: string | null = null;
       try {
         receipt = await readReceipt(shot.dataUrl);
       } catch (cloudError) {
         receipt = await readReceiptOnDevice(shot.uri);
         if (!receipt) throw cloudError;
+        fellBack = cloudError instanceof Error ? cloudError.message : 'the reader was unavailable';
       }
       if (!receipt.items.length) {
         setScanError('No line items found. Try a straighter, brighter photo, with the whole receipt in frame.');
@@ -183,8 +185,22 @@ export default function ChatScreen() {
       // The Japanese original rides along for classification.
       const outcome = await translateNames(receipt.items.map((i: ScannedItem) => i.name));
       const english = outcome.translations;
-      const note = translationNote(outcome);
-      if (note) setScanNote(note);
+
+      /**
+       * Say which reader produced this.
+       *
+       * The two paths give very different quality, and until now there was no
+       * way to tell them apart from the result — a bad reading looked the same
+       * whether the model had failed or the phone had done it.
+       */
+      // Not `source` — that is the camera-or-gallery parameter of this function.
+      const readerLabel =
+        receipt.model === 'on-device'
+          ? `Read on this phone${fellBack ? ` — ${fellBack}` : ''}`
+          : `Read by ${receipt.model ?? 'the receipt reader'}`;
+
+      const notes = [readerLabel, translationNote(outcome)].filter(Boolean) as string[];
+      setScanNote(notes.join(String.fromCharCode(10)));
 
       setDraft({
         merchant: receipt.merchant,
