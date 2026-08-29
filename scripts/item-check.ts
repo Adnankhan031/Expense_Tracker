@@ -39,6 +39,7 @@ const TOP: [string, string][] = [
   ['toothpaste', 'toiletries'],
 ];
 
+export function runItemChecks(): { pass: number; total: number } {
 let pass = 0, total = 0;
 for (const [input, want] of FOLD) {
   total++; const got = foldJa(input);
@@ -55,6 +56,7 @@ for (const [name, want] of TOP) {
   else console.log(`FAIL top   ${name} -> ${r.subKey}/${r.categoryKey} (want ${want})`);
 }
 
-console.log(`\nItem check: ${pass}/${total} passed`);
-if (pass !== total) process.exit(1);
-console.log('All good.');
+  console.log(`
+Item check: ${pass}/${total} passed`);
+  return { pass, total };
+}

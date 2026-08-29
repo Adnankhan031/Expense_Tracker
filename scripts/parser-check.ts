@@ -8,6 +8,10 @@ import type { Category } from '../src/db';
 import { SEED_CATEGORIES } from '../src/seed';
 import { parseInput } from '../src/parser';
 import { addDays, monthKey, pad2, todayLocal } from '../src/format';
+// Run from here rather than its own npm script: `packageJson:scripts` is an
+// input to the runtime fingerprint, so adding a script strands every installed
+// app on the old runtime until it is reinstalled.
+import { runItemChecks } from './item-check';
 
 const categories: Category[] = SEED_CATEGORIES.map((c, i) => ({
   // ids are uuids in the app; the slug lives on `key`. The corpus asserts on the
@@ -124,5 +128,12 @@ if (failures.length) {
   for (const f of failures) console.log('  ✗ ' + f);
   process.exit(1);
 }
+const items = runItemChecks();
+
+if (items.pass !== items.total) {
+  console.log('Item checks failed.');
+  process.exit(1);
+}
+
 console.log('All good.\n');
 void pad2;

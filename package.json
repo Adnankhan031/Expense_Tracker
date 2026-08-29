@@ -13,8 +13,7 @@
     "build:android": "eas build --profile preview --platform android",
     "build:all": "eas build --profile preview --platform all",
     "check:parser": "esbuild scripts/parser-check.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/parser-check.cjs --log-level=error && node node_modules/.cache/parser-check.cjs",
-    "check": "npm run typecheck && npm run check:parser && npm run check:items",
-    "check:items": "esbuild scripts/item-check.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/item-check.cjs --log-level=error && node node_modules/.cache/item-check.cjs"
+    "check": "npm run typecheck && npm run check:parser"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
