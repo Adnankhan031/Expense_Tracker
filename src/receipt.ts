@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
-import { supabase } from './supabase';
+import { supabase, supabaseConfig } from './supabase';
 
 export type ScannedItem = { name: string; amount_minor: number; qty?: number };
 export type ScannedReceipt = {
@@ -51,31 +51,50 @@ export async function pickReceipt(): Promise<string | null> {
 /**
  * Send the photo to the Edge Function and get the receipt's lines back.
  *
- * The OpenRouter key lives on the function, never in this bundle — anything
- * shipped in the app is extractable, as the Supabase key in the APK showed.
+ * Deliberately plain fetch rather than `functions.invoke`. The client wraps any
+ * non-2xx as "Edge Function returned a non-2xx status code" and discards the
+ * body, so a spent quota, an oversized image and an unreadable photo all
+ * arrived looking identical — with nothing to act on. The function already
+ * returns a precise reason; this keeps it.
  */
 export async function readReceipt(dataUrl: string): Promise<ScannedReceipt> {
-  const { data, error } = await supabase().functions.invoke('read-receipt', {
-    body: { image: dataUrl },
-  });
+  const { url, key } = supabaseConfig();
+  if (!url || !key) throw new Error('Sync is not configured in this build.');
 
-  if (error) throw new Error(await messageFrom(error));
-  if (!data || typeof data !== 'object') throw new Error('The receipt reader returned nothing.');
-  if ('error' in data) throw new Error(String((data as { error: string }).error));
+  const { data } = await supabase().auth.getSession();
+  const token = data.session?.access_token ?? key;
 
-  return data as ScannedReceipt;
-}
-
-/** The function's own error body says more than "non-2xx status". */
-async function messageFrom(error: unknown): Promise<string> {
-  const ctx = (error as { context?: unknown })?.context;
-  if (ctx instanceof Response) {
-    try {
-      const body = await ctx.json();
-      if (body?.error) return String(body.error);
-    } catch {
-      /* fall through */
-    }
+  let res: Response;
+  try {
+    res = await fetch(`${url}/functions/v1/read-receipt`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: key,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ image: dataUrl }),
+    });
+  } catch {
+    throw new Error('No connection. The receipt reader needs the internet.');
   }
-  return error instanceof Error ? error.message : 'Could not reach the receipt reader.';
+
+  const body = await res.text();
+  let parsed: (ScannedReceipt & { error?: string }) | null = null;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    /* not JSON — fall through to the status-based message */
+  }
+
+  if (!res.ok) {
+    if (parsed?.error) throw new Error(parsed.error);
+    if (res.status === 404) throw new Error('The read-receipt function is not deployed on this project.');
+    if (res.status === 401 || res.status === 403) throw new Error('Sign in again — the session was rejected.');
+    throw new Error(`The receipt reader failed (${res.status}). ${body.slice(0, 140)}`);
+  }
+
+  if (!parsed) throw new Error('The receipt reader returned something unreadable.');
+  if (parsed.error) throw new Error(parsed.error);
+  return parsed;
 }

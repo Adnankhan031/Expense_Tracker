@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { ArrowUp, Camera, LayoutGrid, MessageSquareText, Plus, Trash2, X } from 'lucide-react-native';
+import { ArrowUp, Camera, Images, LayoutGrid, MessageSquareText, Plus, Trash2, TriangleAlert, X } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
 
 import {
@@ -32,7 +32,7 @@ import { parseInput } from '../../src/parser';
 import { runQuery, type Answer } from '../../src/analytics';
 import { useData, useSettings } from '../../src/store';
 import { radius, space, useTheme } from '../../src/theme';
-import { Chip, EmptyState, Money, Screen, tap, tapSuccess } from '../../src/ui';
+import { Button, Chip, EmptyState, IconBadge, Money, Screen, Sheet, tap, tapSuccess } from '../../src/ui';
 import { DatePickerSheet } from '../../src/pickers';
 import { TxnEditor } from '../../src/TxnEditor';
 import { ItemsEditor, type ReceiptDraft } from '../../src/ItemsEditor';
@@ -61,6 +61,8 @@ export default function ChatScreen() {
   const [showPicker, setShowPicker] = useState(false);
   const [draft, setDraft] = useState<ReceiptDraft | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [askSource, setAskSource] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const kb = useKeyboardHeight();
 
   /** Drop the category's own keyword in, so all that is left to type is the amount. */
@@ -138,11 +140,7 @@ export default function ChatScreen() {
    */
   const chooseSource = () => {
     tap();
-    Alert.alert('Scan a receipt', 'Where is the photo?', [
-      { text: 'Take a photo', onPress: () => void scanReceipt('camera') },
-      { text: 'Choose from gallery', onPress: () => void scanReceipt('library') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    setAskSource(true);
   };
 
   const scanReceipt = async (source: 'camera' | 'library') => {
@@ -153,7 +151,7 @@ export default function ChatScreen() {
 
       const receipt = await readReceipt(dataUrl);
       if (!receipt.items.length) {
-        Alert.alert('Nothing readable', 'No line items found. Try a straighter, brighter photo.');
+        setScanError('No line items found. Try a straighter, brighter photo, with the whole receipt in frame.');
         return;
       }
       setDraft({
@@ -163,7 +161,7 @@ export default function ChatScreen() {
         lines: receipt.items.map((i: ScannedItem) => ({ name: i.name, amount_minor: i.amount_minor })),
       });
     } catch (e) {
-      Alert.alert('Could not read it', e instanceof Error ? e.message : 'Something went wrong.');
+      setScanError(e instanceof Error ? e.message : 'Something went wrong.');
     } finally {
       setScanning(false);
     }
@@ -616,6 +614,50 @@ export default function ChatScreen() {
           setShowDate(false);
         }}
       />
+
+      <Sheet visible={askSource} onClose={() => setAskSource(false)} title="Scan a receipt">
+        <Text style={{ color: t.dim, fontSize: 13.5, lineHeight: 19, marginBottom: space.sm }}>
+          Photograph the bill, or pick one you have already taken.
+        </Text>
+        {(
+          [
+            { key: 'camera', label: 'Take a photo', Icon: Camera },
+            { key: 'library', label: 'Choose from gallery', Icon: Images },
+          ] as const
+        ).map(({ key, label, Icon }) => (
+          <Pressable
+            key={key}
+            onPress={() => {
+              tap();
+              setAskSource(false);
+              void scanReceipt(key);
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              backgroundColor: t.sunken,
+              borderRadius: radius.md,
+              padding: 14,
+              marginBottom: 8,
+            }}
+          >
+            <IconBadge icon={<Icon size={18} color={t.brand} />} color={t.brand} size={38} />
+            <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600' }}>{label}</Text>
+          </Pressable>
+        ))}
+      </Sheet>
+
+      <Sheet visible={!!scanError} onClose={() => setScanError(null)} title="Could not read it">
+        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+          <TriangleAlert size={19} color={t.down} style={{ marginTop: 2 }} />
+          <Text style={{ color: t.dim, fontSize: 14, lineHeight: 20, flex: 1 }}>{scanError}</Text>
+        </View>
+        <Text style={{ color: t.faint, fontSize: 12.5, lineHeight: 18, marginTop: space.sm }}>
+          You can still type the entry, or add the lines by hand from the entry editor.
+        </Text>
+        <Button title="OK" onPress={() => setScanError(null)} />
+      </Sheet>
 
       <ItemsEditor
         open={!!draft}

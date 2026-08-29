@@ -28,6 +28,9 @@ function config() {
   };
 }
 
+/** The project URL and publishable key, for callers that use fetch directly. */
+export const supabaseConfig = config;
+
 export const isSupabaseConfigured = () => {
   const { url, key } = config();
   return Boolean(url && key);
