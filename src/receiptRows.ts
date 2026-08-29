@@ -51,11 +51,31 @@ export function rowsFromBlocks(result: OcrResult): string[] {
   }
 
   return rows.map((row) =>
-    row
-      .sort((a, b) => a.frame!.left - b.frame!.left)
-      .map((l) => l.text.trim())
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim()
+    healRow(
+      row
+        .sort((a, b) => a.frame!.left - b.frame!.left)
+        .map((l) => l.text.trim())
+        .join(' ')
+    )
   );
+}
+
+/**
+ * Repair numbers that OCR split at the thousands separator.
+ *
+ * ML Kit frequently returns "1," and "160" as two tokens, and joining a row
+ * puts a space between them. "*1, 160" then matches only the trailing 160, so
+ * a ¥1,160 item was recorded as ¥160 and a ¥9,695 total as ¥695 — an error
+ * that shrinks the number by an order of magnitude and looks entirely
+ * plausible on screen.
+ *
+ * Only a group of exactly three digits after a comma is closed up, which is
+ * what a thousands separator is; "2個, 300" is left alone.
+ */
+export function healRow(text: string): string {
+  return text
+    .replace(/(\d),\s+(?=\d{3}(?!\d))/g, '$1,')
+    .replace(/([¥￥])\s+(?=\d)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

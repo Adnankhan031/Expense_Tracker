@@ -54,8 +54,16 @@ const TRAILING_AMOUNT = /(?:^|\s)(-?)\s*[*#※¥￥\$]{0,2}\s*(\d{1,3}(?:,\d{3})
 const QUANTITY_LINE =
   /^\s*\(?\s*(?:[¥￥]?\s*[\d,]+\s*[x×✕*]\s*\d+\s*[点個コこ]?|\d+\s*[点個コこ]?\s*[x×✕*]\s*[¥￥]?\s*[\d,]+)\s*\)?\s*$/i;
 
-/** Till codes printed before the product name: "510_", "#514_". */
-const PRODUCT_CODE = /^#?\s*\d{2,4}[_\-\s]\s*/;
+/** Till codes printed before the product name: "510_", "#514_", "514.". */
+const PRODUCT_CODE = /^[#■]?\s*\d{2,4}[_.\-\s]\s*/;
+
+/**
+ * A unit-price group that landed on the item's own row: "(¥344 X 2個)".
+ *
+ * These print just under the item, close enough that a slightly skewed photo
+ * puts them on the same row, and they are not part of the product's name.
+ */
+const INLINE_UNIT_PRICE = /[（(]\s*[¥￥]?\s*[\d,]+\s*[xX×✕*]\s*\d+\s*[点個コこ]?\s*[）)]/g;
 
 /**
  * The printed amount, in minor units.
@@ -78,8 +86,10 @@ function amountOf(line: string): number | null {
 function nameOf(line: string): string {
   return narrowAscii(line)
     .replace(TRAILING_AMOUNT, '')
+    .replace(INLINE_UNIT_PRICE, ' ')
     .replace(/[※*軽]+\s*$/, '')
     .replace(PRODUCT_CODE, '')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
