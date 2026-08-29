@@ -4,6 +4,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import TextRecognition, { TextRecognitionScript } from '@react-native-ml-kit/text-recognition';
 
 import { parseReceiptText } from './receiptText';
+import { rowsFromBlocks } from './receiptRows';
 import { supabase, supabaseConfig } from './supabase';
 
 export type ScannedItem = { name: string; amount_minor: number; qty?: number };
@@ -42,7 +43,7 @@ async function toDataUrl(uri: string): Promise<string> {
  */
 export async function readReceiptOnDevice(uri: string): Promise<ScannedReceipt | null> {
   const result = await TextRecognition.recognize(uri, TextRecognitionScript.JAPANESE);
-  const lines = result.blocks.flatMap((b) => b.lines.map((l) => l.text));
+  const lines = rowsFromBlocks(result);
   if (lines.length < 4) return null;
 
   const parsed = parseReceiptText(lines);
