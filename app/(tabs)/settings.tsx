@@ -471,7 +471,9 @@ export default function SettingsScreen() {
         </Card>
 
         <Text style={{ color: t.faint, fontSize: 11.5, textAlign: 'center', marginTop: space.xl, lineHeight: 17 }}>
-          Everything is stored on this device.{'\n'}Nothing leaves your phone.
+          {user
+            ? 'Stored on this device, and backed up to your account.'
+            : 'Everything is stored on this device. Sign in to back it up.'}
         </Text>
       </ScrollView>
     </Screen>
