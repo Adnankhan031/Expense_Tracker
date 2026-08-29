@@ -73,6 +73,9 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     color: '#22D3EE',
     kind: 'expense',
     keywords: [
+      'しゃんぷー', 'りんす', 'こんでぃしょなー', 'ぼでぃそーぷ', 'せっけん', '石鹸',
+      'はみがき', '歯磨き', 'はぶらし', '歯ブラシ', 'せんがん', '洗顔', 'けしょうすい',
+      '化粧水', 'かみそり', 'ひげそり', 'おむつ', 'なぷきん', 'にゅうえき', 'にきび',
       'toiletries', 'face wash', 'facewash', 'body wash', 'bodywash', 'shower gel', 'soap',
       'shampoo', 'conditioner', 'hair oil', 'toothpaste', 'toothbrush', 'mouthwash', 'floss',
       'razor', 'shaving', 'shaving cream', 'deodorant', 'perfume', 'body lotion', 'lotion',
@@ -92,6 +95,9 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     color: '#C0895A',
     kind: 'expense',
     keywords: [
+      'せんざい', '洗剤', 'せんたく', '洗濯', 'じゅうなんざい', '柔軟剤', 'ごみぶくろ',
+      'ゴミ袋', 'てぃっしゅ', 'といれっとぺーぱー', 'きっちんぺーぱー', 'らっぷ',
+      'あるみほいる', 'でんち', '電池', 'そうじ', '掃除', 'しょっき', '食器',
       'household', 'detergent', 'laundry liquid', 'fabric softener', 'dish soap', 'dishwash',
       'cleaner', 'cleaning', 'bleach', 'sponge', 'garbage bag', 'trash bag', 'bin bag',
       'kitchen', 'utensils', 'plates', 'cups', 'cutlery', 'pan', 'pot', 'storage box',
