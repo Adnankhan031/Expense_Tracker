@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Camera, ImagePlus, Plus, Sparkles, X } from 'lucide-react-native';
 
 import { classifyItem } from './classify';
-import { listItems, replaceItems, type Category, type TxnItem } from './db';
+import { insertTxn, listItems, replaceItems, type Category, type TxnItem } from './db';
 import { useData } from './store';
 import { radius, space, useTheme } from './theme';
 import { Button, Card, Money, Sheet, tap } from './ui';
@@ -41,16 +41,34 @@ const newRow = (): Row => ({ uid: `r${seq++}`, name: '', amount: '', categoryId:
  * receipts print tax and 値引 discounts on their own lines, so the items
  * genuinely do not add up, and hiding that would make every figure suspect.
  */
+/**
+ * A receipt read from a photo, before it is anything in the database.
+ *
+ * Scanning from the composer has no transaction to attach to yet, so the whole
+ * receipt — total, shop, date and lines — is held here until the user confirms.
+ * Nothing is written until they press save.
+ */
+export type ReceiptDraft = {
+  merchant: string | null;
+  date: string;
+  total: number;
+  lines: { name: string; amount_minor: number }[];
+};
+
 export function ItemsEditor({
   open,
   txnId,
   txnTotal,
+  draft,
   onClose,
+  onCreated,
 }: {
   open: boolean;
   txnId: string | null;
   txnTotal: number;
+  draft?: ReceiptDraft | null;
   onClose: () => void;
+  onCreated?: (id: string) => void;
 }) {
   const t = useTheme();
   const { categories, subCategories, reload } = useData();
@@ -75,7 +93,28 @@ export function ItemsEditor({
   );
 
   useEffect(() => {
-    if (!open || !txnId) return;
+    if (!open) return;
+
+    if (!txnId && draft) {
+      setRows(
+        draft.lines.map((l) => {
+          const hit = classifyItem(l.name, ctx);
+          const key = hit.subKey ?? hit.categoryKey;
+          const cat = key ? byKey.get(key) : undefined;
+          return {
+            uid: `d${seq++}`,
+            name: l.name,
+            amount: String(l.amount_minor / 100),
+            categoryId: cat?.id ?? null,
+            pinned: false,
+            auto: !!cat,
+          };
+        })
+      );
+      return;
+    }
+
+    if (!txnId) return;
     const existing: TxnItem[] = listItems(txnId);
     setRows(
       existing.length
@@ -89,7 +128,7 @@ export function ItemsEditor({
           }))
         : [newRow()]
     );
-  }, [open, txnId]);
+  }, [open, txnId, draft]);
 
   const classify = (uid: string) =>
     setRows((rs) =>
@@ -160,11 +199,43 @@ export function ItemsEditor({
   const filled = rows.filter((r) => r.name.trim() && Number(r.amount) !== 0);
 
   const save = () => {
-    if (!txnId) return;
     setBusy(true);
     try {
+      let target = txnId;
+
+      if (!target && draft) {
+        // File the receipt under whichever category the basket is mostly made
+        // of, so it lands somewhere sensible before the user reviews it.
+        const weight = new Map<string, number>();
+        for (const r of filled) {
+          const cat = r.categoryId ? byId.get(r.categoryId) : undefined;
+          const parent = cat?.parent_key ?? cat?.key;
+          if (parent) weight.set(parent, (weight.get(parent) ?? 0) + Math.abs(Number(r.amount) || 0));
+        }
+        const dominant = [...weight.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+        const catId =
+          categories.find((c) => c.key === dominant)?.id ??
+          categories.find((c) => c.key === 'groceries')?.id ??
+          categories.find((c) => c.key === 'other')?.id ??
+          categories[0]?.id ??
+          '';
+
+        target = insertTxn({
+          amount_minor: draft.total > 0 ? draft.total : Math.round(itemTotal),
+          type: 'expense',
+          category_id: catId,
+          local_date: draft.date,
+          note: draft.merchant,
+          source: 'manual',
+          confidence: 0.9,
+        });
+        onCreated?.(target);
+      }
+
+      if (!target) return;
+
       replaceItems(
-        txnId,
+        target,
         filled.map((r) => ({
           name: r.name.trim(),
           amount_minor: Math.round(Number(r.amount) * 100),

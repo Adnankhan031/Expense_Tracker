@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
   ScrollView,
   Platform,
@@ -9,7 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { ArrowUp, LayoutGrid, MessageSquareText, Plus, Trash2, X } from 'lucide-react-native';
+import { ArrowUp, Camera, LayoutGrid, MessageSquareText, Plus, Trash2, X } from 'lucide-react-native';
 import { useFocusEffect } from 'expo-router';
 
 import {
@@ -33,6 +35,8 @@ import { radius, space, useTheme } from '../../src/theme';
 import { Chip, EmptyState, Money, Screen, tap, tapSuccess } from '../../src/ui';
 import { DatePickerSheet } from '../../src/pickers';
 import { TxnEditor } from '../../src/TxnEditor';
+import { ItemsEditor, type ReceiptDraft } from '../../src/ItemsEditor';
+import { captureReceipt, pickReceipt, readReceipt, type ScannedItem } from '../../src/receipt';
 import { dayLabel, formatMoney, shortDayLabel, todayLocal } from '../../src/format';
 import { CategoryIcon, IconTile } from '../../src/icons';
 import { useKeyboardHeight } from '../../src/useKeyboard';
@@ -55,6 +59,8 @@ export default function ChatScreen() {
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const inputRef = useRef<TextInput>(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [draft, setDraft] = useState<ReceiptDraft | null>(null);
+  const [scanning, setScanning] = useState(false);
   const kb = useKeyboardHeight();
 
   /** Drop the category's own keyword in, so all that is left to type is the amount. */
@@ -115,6 +121,37 @@ export default function ChatScreen() {
   useEffect(() => {
     if (kb > 0) scrollToEnd(true);
   }, [kb, scrollToEnd]);
+
+  /**
+   * Photograph a receipt straight from the composer.
+   *
+   * The camera used to live inside the item editor, three taps down and only
+   * reachable once a transaction already existed — which is no use when the
+   * receipt in your hand is the thing you are trying to record.
+   */
+  const scanReceipt = async (source: 'camera' | 'library') => {
+    setScanning(true);
+    try {
+      const dataUrl = source === 'camera' ? await captureReceipt() : await pickReceipt();
+      if (!dataUrl) return;
+
+      const receipt = await readReceipt(dataUrl);
+      if (!receipt.items.length) {
+        Alert.alert('Nothing readable', 'No line items found. Try a straighter, brighter photo.');
+        return;
+      }
+      setDraft({
+        merchant: receipt.merchant,
+        date: receipt.purchased_on || pinnedDate,
+        total: receipt.total ?? receipt.items.reduce((a: number, i: ScannedItem) => a + i.amount_minor, 0),
+        lines: receipt.items.map((i: ScannedItem) => ({ name: i.name, amount_minor: i.amount_minor })),
+      });
+    } catch (e) {
+      Alert.alert('Could not read it', e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const send = () => {
     const text = input.trim();
@@ -491,6 +528,27 @@ export default function ChatScreen() {
             <LayoutGrid size={18} color={showPicker ? t.brand : t.dim} />
           </Pressable>
 
+          <Pressable
+            disabled={scanning}
+            onLongPress={() => { tap(); void scanReceipt('library'); }}
+            onPress={() => { tap(); void scanReceipt('camera'); }}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: radius.md,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: scanning ? t.brandSoft : t.sunken,
+              opacity: scanning ? 0.7 : 1,
+            }}
+          >
+            {scanning ? (
+              <ActivityIndicator size="small" color={t.brand} />
+            ) : (
+              <Camera size={18} color={t.dim} />
+            )}
+          </Pressable>
+
           <TextInput
             ref={inputRef}
             value={input}
@@ -542,6 +600,14 @@ export default function ChatScreen() {
           setPinnedDate(d);
           setShowDate(false);
         }}
+      />
+
+      <ItemsEditor
+        open={!!draft}
+        txnId={null}
+        txnTotal={draft?.total ?? 0}
+        draft={draft}
+        onClose={() => setDraft(null)}
       />
 
       <TxnEditor
