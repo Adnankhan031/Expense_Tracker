@@ -4,7 +4,10 @@
     "slug": "adnan",
     "owner": "adnankhan19s-team",
     "version": "1.0.0",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "spendly",
@@ -42,10 +45,19 @@
           "imageWidth": 180,
           "resizeMode": "contain",
           "backgroundColor": "#0B0F14",
-          "dark": { "backgroundColor": "#0B0F14" }
+          "dark": {
+            "backgroundColor": "#0B0F14"
+          }
         }
       ],
-      "expo-updates"
+      "expo-updates",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Spendly uses your photos so you can pick a receipt you already took.",
+          "cameraPermission": "Spendly uses the camera to read a receipt and split it into what you bought."
+        }
+      ]
     ],
     "updates": {
       "enabled": true,

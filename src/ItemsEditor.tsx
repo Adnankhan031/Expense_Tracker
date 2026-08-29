@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Plus, Sparkles, X } from 'lucide-react-native';
+import { Camera, ImagePlus, Plus, Sparkles, X } from 'lucide-react-native';
 
 import { classifyItem } from './classify';
 import { listItems, replaceItems, type Category, type TxnItem } from './db';
@@ -8,6 +8,7 @@ import { useData } from './store';
 import { radius, space, useTheme } from './theme';
 import { Button, Card, Money, Sheet, tap } from './ui';
 import { CategoryIcon } from './icons';
+import { captureReceipt, pickReceipt, readReceipt } from './receipt';
 
 type Row = {
   /** Local key only — rows are replaced wholesale on save. */
@@ -49,6 +50,9 @@ export function ItemsEditor({
   const [rows, setRows] = useState<Row[]>([]);
   const [picking, setPicking] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanNote, setScanNote] = useState<string | null>(null);
 
   const byId = useMemo(
     () => new Map<string, Category>([...categories, ...subCategories].map((c) => [c.id, c])),
@@ -91,6 +95,56 @@ export function ItemsEditor({
       })
     );
 
+  /**
+   * Photograph the bill and let the model split it.
+   *
+   * Every line still lands in the same editable rows, unsaved, so a misread
+   * price is corrected here rather than discovered in next month's totals.
+   */
+  const scan = async (source: 'camera' | 'library') => {
+    setScanning(true);
+    setScanError(null);
+    setScanNote(null);
+    try {
+      const dataUrl = source === 'camera' ? await captureReceipt() : await pickReceipt();
+      if (!dataUrl) return; // backed out
+
+      const receipt = await readReceipt(dataUrl);
+      if (!receipt.items.length) {
+        setScanError('No line items found. Try a straighter, brighter photo.');
+        return;
+      }
+
+      // Classify as the rows are built, so most arrive already sorted.
+      const scanned: Row[] = receipt.items.map((it) => {
+        const hit = classifyItem(it.name, ctx);
+        const key = hit.subKey ?? hit.categoryKey;
+        const cat = key ? byKey.get(key) : undefined;
+        return {
+          uid: `s${seq++}`,
+          name: it.name,
+          amount: String(it.amount_minor / 100),
+          categoryId: cat?.id ?? null,
+          pinned: false,
+          auto: !!cat,
+        };
+      });
+
+      // Replace empty starter rows; keep anything already typed.
+      setRows((rs) => [...rs.filter((r) => r.name.trim() || Number(r.amount) > 0), ...scanned]);
+
+      const named = scanned.filter((r) => r.categoryId).length;
+      setScanNote(
+        `${scanned.length} lines read${receipt.merchant ? ` from ${receipt.merchant}` : ''} · ` +
+          `${named} categorised automatically`
+      );
+    } catch (e) {
+      setScanError(e instanceof Error ? e.message : 'Could not read that photo.');
+    } finally {
+      setScanning(false);
+    }
+  };
+
   const itemTotal = rows.reduce((a, r) => a + Math.round(Number(r.amount || '0') * 100), 0);
   const gap = txnTotal - itemTotal;
   const filled = rows.filter((r) => r.name.trim() && Number(r.amount) > 0);
@@ -125,6 +179,32 @@ export function ItemsEditor({
   return (
     <>
       <Sheet visible={open} onClose={onClose} title="What was in it?">
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Button
+            title={scanning ? 'Reading…' : 'Scan a receipt'}
+            icon={<Camera size={16} color={t.onBrand} />}
+            onPress={() => void scan('camera')}
+            loading={scanning}
+            style={{ flex: 1 }}
+          />
+          <Button
+            title=""
+            icon={<ImagePlus size={17} color={t.ink} />}
+            variant="ghost"
+            onPress={() => void scan('library')}
+            disabled={scanning}
+          />
+        </View>
+
+        {!!scanError && (
+          <Text style={{ color: t.down, fontSize: 12.5, lineHeight: 17 }}>{scanError}</Text>
+        )}
+        {!!scanNote && !scanError && (
+          <Text style={{ color: t.dim, fontSize: 12.5, lineHeight: 17 }}>
+            {scanNote} — check the prices before saving.
+          </Text>
+        )}
+
         <View style={{ gap: 8 }}>
           {rows.map((r) => {
             const cat = r.categoryId ? byId.get(r.categoryId) : undefined;
