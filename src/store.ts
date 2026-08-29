@@ -8,6 +8,7 @@ import {
   listAliases,
   listBudgets,
   listCategories,
+  listSubCategories,
   setSetting,
 } from './db';
 import { todayLocal } from './format';
@@ -70,6 +71,8 @@ export const useSettings = create<SettingsState>((set) => ({
 
 type DataState = {
   categories: Category[];
+  /** Receipt-line subcategories. Kept apart so category pickers stay clean. */
+  subCategories: Category[];
   accounts: Account[];
   budgets: Budget[];
   aliases: Map<string, string>;
@@ -84,6 +87,7 @@ type DataState = {
 
 export const useData = create<DataState>((set, get) => ({
   categories: [],
+  subCategories: [],
   accounts: [],
   budgets: [],
   aliases: new Map(),
@@ -95,6 +99,7 @@ export const useData = create<DataState>((set, get) => ({
     for (const a of listAliases()) aliasMap.set(a.keyword, a.category_id);
     set({
       categories: listCategories(),
+      subCategories: listSubCategories(),
       accounts: listAccounts(),
       budgets: listBudgets(),
       aliases: aliasMap,

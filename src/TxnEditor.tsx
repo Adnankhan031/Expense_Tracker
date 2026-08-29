@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { CalendarDays, Check, ChevronRight } from 'lucide-react-native';
+import { CalendarDays, Check, ChevronRight, ReceiptText } from 'lucide-react-native';
 import {
   NewTxn,
   Txn,
   getTxn,
   insertTxn,
   learnAlias,
+  listItems,
   softDeleteTxn,
   updateTxn,
 } from './db';
@@ -16,6 +17,7 @@ import { CategoryPickerSheet, DatePickerSheet } from './pickers';
 import { radius, space, useTheme } from './theme';
 import { dayLabel, toMinor } from './format';
 import { IconTile } from './icons';
+import { ItemsEditor } from './ItemsEditor';
 
 const METHODS = ['Cash', 'UPI', 'Card', 'Bank', 'Wallet'];
 
@@ -43,6 +45,14 @@ export function TxnEditor({
   const [categoryId, setCategoryId] = useState<string>('other');
   const [date, setDate] = useState(pinnedDate);
   const [method, setMethod] = useState<string | null>(null);
+  const [showItems, setShowItems] = useState(false);
+  const [itemCount, setItemCount] = useState(0);
+
+  // Re-read when the editor opens and whenever the items sheet closes, so the
+  // summary row reflects an edit that just happened.
+  useEffect(() => {
+    setItemCount(visible && txnId ? listItems(txnId).length : 0);
+  }, [visible, txnId, showItems]);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [reimbursable, setReimbursable] = useState(false);
@@ -208,6 +218,36 @@ export function TxnEditor({
           </View>
         )}
 
+        {/* Itemising needs a saved transaction — there is no id to hang the
+            lines off until it exists. */}
+        {txnId && type === 'expense' && (
+          <Pressable
+            onPress={() => {
+              tap();
+              setShowItems(true);
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              backgroundColor: t.sunken,
+              borderRadius: radius.md,
+              padding: 14,
+            }}
+          >
+            <ReceiptText size={19} color={t.dim} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: t.ink, fontSize: 15, fontWeight: '600' }}>
+                {itemCount > 0 ? `${itemCount} ${itemCount === 1 ? 'line' : 'lines'}` : 'Itemise this receipt'}
+              </Text>
+              <Text style={{ color: t.dim, fontSize: 11.5, marginTop: 2 }}>
+                {itemCount > 0 ? 'What was actually in the basket' : 'Break it into what you actually bought'}
+              </Text>
+            </View>
+            <ChevronRight size={17} color={t.faint} />
+          </Pressable>
+        )}
+
         <TextInput
           value={note}
           onChangeText={setNote}
@@ -261,6 +301,13 @@ export function TxnEditor({
         <Button title={txnId ? 'Save changes' : 'Add entry'} onPress={save} />
         {!!txnId && <Button title="Delete" variant="danger" onPress={remove} />}
       </Sheet>
+
+      <ItemsEditor
+        open={showItems}
+        txnId={txnId ?? null}
+        txnTotal={toMinor(Number(amount || '0'))}
+        onClose={() => setShowItems(false)}
+      />
 
       <CategoryPickerSheet
         visible={showCat}
