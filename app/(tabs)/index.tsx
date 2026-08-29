@@ -42,6 +42,7 @@ import {
   readReceipt,
   readReceiptOnDevice,
   translateNames,
+  translationNote,
   type ScannedItem,
 } from '../../src/receipt';
 import { dayLabel, formatMoney, shortDayLabel, todayLocal } from '../../src/format';
@@ -70,6 +71,7 @@ export default function ChatScreen() {
   const [scanning, setScanning] = useState(false);
   const [askSource, setAskSource] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [scanNote, setScanNote] = useState<string | null>(null);
   const kb = useKeyboardHeight();
 
   /** Drop the category's own keyword in, so all that is left to type is the amount. */
@@ -152,6 +154,7 @@ export default function ChatScreen() {
 
   const scanReceipt = async (source: 'camera' | 'library') => {
     setScanning(true);
+    setScanNote(null);
     try {
       const shot = source === 'camera' ? await captureReceipt() : await pickReceipt();
       if (!shot) return;
@@ -178,7 +181,10 @@ export default function ChatScreen() {
       }
       // Translate before the draft opens, so the list is readable at a glance.
       // The Japanese original rides along for classification.
-      const english = await translateNames(receipt.items.map((i: ScannedItem) => i.name));
+      const outcome = await translateNames(receipt.items.map((i: ScannedItem) => i.name));
+      const english = outcome.translations;
+      const note = translationNote(outcome);
+      if (note) setScanNote(note);
 
       setDraft({
         merchant: receipt.merchant,
@@ -694,7 +700,11 @@ export default function ChatScreen() {
         txnId={null}
         txnTotal={draft?.total ?? 0}
         draft={draft}
-        onClose={() => setDraft(null)}
+        note={scanNote}
+        onClose={() => {
+          setDraft(null);
+          setScanNote(null);
+        }}
       />
 
       <TxnEditor

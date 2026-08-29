@@ -3,12 +3,28 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Camera, ImagePlus, Plus, Sparkles, X } from 'lucide-react-native';
 
 import { classifyItem } from './classify';
-import { insertTxn, listItems, replaceItems, type Category, type TxnItem } from './db';
+import { foldJa } from './jp';
+import {
+  insertTxn,
+  learnAlias,
+  listAliases,
+  listItems,
+  replaceItems,
+  type Category,
+  type TxnItem,
+} from './db';
 import { useData } from './store';
 import { radius, space, useTheme } from './theme';
 import { Button, Card, Money, Sheet, tap } from './ui';
 import { CategoryIcon } from './icons';
-import { captureReceipt, pickReceipt, readReceipt, readReceiptOnDevice, translateNames } from './receipt';
+import {
+  captureReceipt,
+  pickReceipt,
+  readReceipt,
+  readReceiptOnDevice,
+  translateNames,
+  translationNote,
+} from './receipt';
 
 type Row = {
   /** Local key only — rows are replaced wholesale on save. */
@@ -63,6 +79,7 @@ export function ItemsEditor({
   txnId,
   txnTotal,
   draft,
+  note,
   onClose,
   onCreated,
 }: {
@@ -70,11 +87,13 @@ export function ItemsEditor({
   txnId: string | null;
   txnTotal: number;
   draft?: ReceiptDraft | null;
+  /** A message from the scan that produced this draft, e.g. why some lines are Japanese. */
+  note?: string | null;
   onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
   const t = useTheme();
-  const { categories, subCategories, reload } = useData();
+  const { categories, subCategories, reload, version } = useData();
   const [rows, setRows] = useState<Row[]>([]);
   const [picking, setPicking] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -90,10 +109,25 @@ export function ItemsEditor({
     () => new Map([...categories, ...subCategories].map((c) => [c.key, c])),
     [categories, subCategories]
   );
-  const ctx = useMemo(
-    () => ({ categories: categories.map((c) => ({ key: c.key, keywords: c.keywords })) }),
-    [categories]
-  );
+  /**
+   * Classification context, including everything already corrected by hand.
+   *
+   * A product you have filed once is filed instantly for ever after: no
+   * dictionary lookup, no network, no quota. This is what makes a weekly shop
+   * at the same place get faster rather than costing the same every time.
+   */
+  const ctx = useMemo(() => {
+    const learned = new Map<string, { subKey?: string; categoryKey?: string }>();
+    for (const a of listAliases()) {
+      const cat = byId.get(a.category_id);
+      if (!cat) continue;
+      learned.set(
+        foldJa(a.keyword),
+        cat.parent_key ? { subKey: cat.key } : { categoryKey: cat.key }
+      );
+    }
+    return { categories: categories.map((c) => ({ key: c.key, keywords: c.keywords })), learned };
+  }, [categories, byId, version]);
 
   useEffect(() => {
     if (!open) return;
@@ -202,7 +236,9 @@ export function ItemsEditor({
        * the learned aliases are keyed on it — so the original is kept on the
        * row and only the label changes.
        */
-      const english = await translateNames(scanned.map((r) => r.name));
+      const outcome = await translateNames(scanned.map((r) => r.name));
+      const english = outcome.translations;
+      const tNote = translationNote(outcome);
       for (const r of scanned) {
         const en = english.get(r.name);
         if (en) {
@@ -214,7 +250,9 @@ export function ItemsEditor({
       const named = scanned.filter((r) => r.categoryId).length;
       setScanNote(
         `${scanned.length} lines read${receipt.merchant ? ` from ${receipt.merchant}` : ''} · ` +
-          `${named} categorised automatically`
+          `${named} categorised automatically` +
+          (tNote ? `
+${tNote}` : '')
       );
     } catch (e) {
       setScanError(e instanceof Error ? e.message : 'Could not read that photo.');
@@ -266,6 +304,19 @@ export function ItemsEditor({
 
       if (!target) return;
 
+      /**
+       * Remember what each product was filed as.
+       *
+       * Saving is the strongest signal available: the user has seen the row and
+       * accepted it. Storing the binding here is why the second receipt from a
+       * shop classifies almost entirely from memory.
+       */
+      for (const r of filled) {
+        if (!r.categoryId) continue;
+        const printed = (r.original ?? r.name).trim();
+        if (printed) learnAlias(foldJa(printed), r.categoryId);
+      }
+
       replaceItems(
         target,
         filled.map((r) => ({
@@ -311,6 +362,9 @@ export function ItemsEditor({
 
         {!!scanError && (
           <Text style={{ color: t.down, fontSize: 12.5, lineHeight: 17 }}>{scanError}</Text>
+        )}
+        {!!note && !scanNote && !scanError && (
+          <Text style={{ color: t.dim, fontSize: 12.5, lineHeight: 17 }}>{note}</Text>
         )}
         {!!scanNote && !scanError && (
           <Text style={{ color: t.dim, fontSize: 12.5, lineHeight: 17 }}>

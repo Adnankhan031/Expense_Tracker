@@ -159,9 +159,17 @@ export async function readReceipt(dataUrl: string): Promise<ScannedReceipt> {
  * Never throws: a translation is a nicety, and failing to get one must not stop
  * a receipt being saved.
  */
-export async function translateNames(names: string[]): Promise<Map<string, string>> {
+export type TranslationOutcome = {
+  translations: Map<string, string>;
+  /** Set when some names could not be translated, with the reason why. */
+  problem: 'quota' | 'offline' | 'failed' | null;
+  /** How many names still have no English form. */
+  untranslated: number;
+};
+
+export async function translateNames(names: string[]): Promise<TranslationOutcome> {
   const result = new Map<string, string>();
-  if (!names.length) return result;
+  if (!names.length) return { translations: result, problem: null, untranslated: 0 };
 
   const cache = cachedTranslations(names);
   for (const n of names) {
@@ -170,11 +178,12 @@ export async function translateNames(names: string[]): Promise<Map<string, strin
   }
 
   const missing = [...new Set(names.filter((n) => !result.has(n) && n.trim()))];
-  if (!missing.length) return result;
+  if (!missing.length) return { translations: result, problem: null, untranslated: 0 };
 
+  let problem: TranslationOutcome['problem'] = null;
   try {
     const { url, key } = supabaseConfig();
-    if (!url || !key) return result;
+    if (!url || !key) return { translations: result, problem: 'failed', untranslated: missing.length };
     const { data } = await supabase().auth.getSession();
     const token = data.session?.access_token ?? key;
 
@@ -183,11 +192,16 @@ export async function translateNames(names: string[]): Promise<Map<string, strin
       headers: { Authorization: `Bearer ${token}`, apikey: key, 'Content-Type': 'application/json' },
       body: JSON.stringify({ names: missing }),
     });
-    if (!res.ok) return result;
+    if (!res.ok) {
+      problem = res.status === 429 ? 'quota' : 'failed';
+      return { translations: result, problem, untranslated: missing.length };
+    }
 
     const body = await res.json();
     const list: unknown = body?.translations;
-    if (!Array.isArray(list)) return result;
+    if (!Array.isArray(list)) {
+      return { translations: result, problem: 'failed', untranslated: missing.length };
+    }
 
     const learned: { original: string; en: string }[] = [];
     missing.forEach((original, i) => {
@@ -199,8 +213,19 @@ export async function translateNames(names: string[]): Promise<Map<string, strin
     });
     rememberTranslations(learned);
   } catch {
-    // Offline, or the quota is gone. The Japanese names still work.
+    problem = 'offline';
   }
 
-  return result;
+  const untranslated = names.filter((n) => !result.has(n)).length;
+  return { translations: result, problem: untranslated > 0 ? problem : null, untranslated };
+}
+
+/** Plain wording for why some lines are still in Japanese. */
+export function translationNote(outcome: TranslationOutcome): string | null {
+  if (!outcome.problem || outcome.untranslated === 0) return null;
+  const n = outcome.untranslated;
+  const lines = `${n} ${n === 1 ? 'line is' : 'lines are'} still in Japanese`;
+  if (outcome.problem === 'quota') return `${lines} — the daily translation limit is used up.`;
+  if (outcome.problem === 'offline') return `${lines} — no connection to translate them.`;
+  return `${lines} — translation is unavailable right now.`;
 }
