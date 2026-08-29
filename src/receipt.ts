@@ -144,7 +144,14 @@ export async function readReceipt(dataUrl: string): Promise<ScannedReceipt> {
   return {
     ...parsed,
     total: parsed.total === null || parsed.total === undefined ? null : Math.round(parsed.total * 100),
-    items: (parsed.items ?? []).map((i) => ({ ...i, amount_minor: Math.round(i.amount_minor * 100) })),
+    items: (parsed.items ?? []).map((i) => ({
+      ...i,
+      // "510_" and "#514_" are the till's product codes. The on-device path
+      // already dropped them; the model returns the name exactly as printed,
+      // so they have to come off here too or every name carries a number.
+      name: i.name.replace(/^[#■]?\s*\d{2,4}[_.\-\s]\s*/, '').trim() || i.name,
+      amount_minor: Math.round(i.amount_minor * 100),
+    })),
   };
 }
 

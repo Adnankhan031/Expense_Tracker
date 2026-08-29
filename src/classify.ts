@@ -34,7 +34,13 @@ export type ClassifyContext = {
   subCategories?: SubCategory[];
 };
 
-type Entry = { subKey: string | null; categoryKey: string | null; word: string };
+type Entry = {
+  subKey: string | null;
+  categoryKey: string | null;
+  word: string;
+  /** Names what the product is, so it outranks any flavour word. */
+  strong: boolean;
+};
 
 let cache: { key: unknown; index: Entry[]; bare: Map<string, Entry> } | null = null;
 
@@ -70,9 +76,13 @@ function buildIndex(ctx: ClassifyContext): Entry[] {
   const entries: Entry[] = [];
 
   for (const s of subs) {
+    for (const k of s.strong ?? []) {
+      const word = foldJa(k);
+      if (word) entries.push({ subKey: s.key, categoryKey: null, word, strong: true });
+    }
     for (const k of s.keywords) {
       const word = foldJa(k);
-      if (word) entries.push({ subKey: s.key, categoryKey: null, word });
+      if (word) entries.push({ subKey: s.key, categoryKey: null, word, strong: false });
     }
   }
 
@@ -81,12 +91,19 @@ function buildIndex(ctx: ClassifyContext): Entry[] {
   for (const c of ctx.categories) {
     for (const k of (c.keywords || '').split('|')) {
       const word = foldJa(k);
-      if (word) entries.push({ subKey: null, categoryKey: c.key, word });
+      if (word) entries.push({ subKey: null, categoryKey: c.key, word, strong: false });
     }
   }
 
-  // Longest first: a specific phrase must beat the generic word inside it.
-  entries.sort((a, b) => b.word.length - a.word.length);
+  /**
+   * Strong words first, then longest.
+   *
+   * バナナカステラ is a castella flavoured with banana, and 果汁グミぶどう is a
+   * gummy flavoured with grape. Sorting on length alone made the flavour win,
+   * so banana cake was filed as fresh fruit. A word that names the product's
+   * form is checked before any flavour, however long the flavour is.
+   */
+  entries.sort((a, b) => (a.strong === b.strong ? b.word.length - a.word.length : a.strong ? -1 : 1));
   cache = { key: ctx.categories, index: entries, bare: buildBareIndex(entries) };
   return entries;
 }
@@ -184,6 +201,24 @@ export function classifyItem(rawName: string, ctx: ClassifyContext): ItemCategor
        * uncategorised row asks for one tap; a wrong one is never noticed.
        */
       if (ambiguous) return { subKey: null, categoryKey: null, confidence: 0, matched: null };
+
+      /**
+       * A product-form word, with its voicing marks gone.
+       *
+       * OCR returned ツイストーナツ for ツイストドーナツ — the ド lost its
+       * dakuten and then its consonant. Stripped, どーなつ becomes とーなつ,
+       * which the garbled name still contains. Only strong words are searched
+       * this way: they name what a thing is, so finding one anywhere in the
+       * name is meaningful, where finding a flavour word would not be.
+       */
+      let inner: Entry | null = null;
+      for (const [key, e] of bareIndex) {
+        if (!e.strong || key.length < 3 || !bare.includes(key)) continue;
+        if (!inner || key.length > stripDakuten(inner.word).length) inner = e;
+      }
+      if (inner) {
+        return { subKey: inner.subKey, categoryKey: inner.categoryKey, confidence: 0.75, matched: inner.word };
+      }
 
       /**
        * Last resort: the name starts with a known word.

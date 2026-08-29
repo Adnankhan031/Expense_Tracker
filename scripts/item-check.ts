@@ -31,6 +31,36 @@ const OCR: [string, string | null][] = [
   ['キュウニウ', null],
 ];
 
+
+/**
+ * Lines from a real 葛西店 receipt, as the vision model returned them.
+ *
+ * These are the cases that exposed flavour words beating product words:
+ * バナナカステラ is a castella, not a banana, and 果汁グミぶどう is a gummy,
+ * not fruit. Both were filed as fresh produce until product forms were made
+ * to outrank flavours.
+ */
+const REAL: [string, string | null][] = [
+  ['514_バナナカステラ', 'snacks'],       // banana-flavoured cake, not fruit
+  ['514_果汁グミぶどう', 'snacks'],       // grape gummy, not fruit
+  ['14_果汁グミゴールドキウイ', 'snacks'], // kiwi gummy, not fruit
+  ['514_雪の宿 サラダ', 'snacks'],        // rice cracker; サラダ is the flavour
+  ['514_芋羊羹カステラ', 'snacks'],
+  ['514_牛乳ケーキ', 'snacks'],
+  ['520_7Pツイストーナツ', 'snacks'],     // OCR dropped the ド of ドーナツ
+  ['12_ペプシ生さむらD600ML', 'drinks'],
+  ['12_コカコーラ Zero 700ML', 'drinks'],
+  ['514_QBわりきマメ', 'dairy'],          // QBB cheese, badly read
+  ['514_チーズ豆ミックス', 'dairy'],
+  ['514_丸大豆せんべい醤油', 'snacks'],
+  ['514_丸大豆せん枝豆', 'snacks'],
+  ['561_りんご', 'produce'],
+  ['510_日清 あっさりCN', 'staples'],
+  // 混ぜ込み is a rice-seasoning line, so condiments is right and the fish is
+  // the flavour — the opposite of the castella case.
+  ['510_混ぜ込み鯖', 'spices'],
+];
+
 const ctx = { categories: SEED_CATEGORIES.map((c) => ({ key: c.id, keywords: c.keywords.join('|') })) };
 
 const FOLD: [string, string][] = [
@@ -78,6 +108,12 @@ for (const [name, want] of OCR) {
   const got = r.subKey ?? r.categoryKey ?? null;
   if (got === want) pass++;
   else console.log(`FAIL ocr   ${name} -> ${got} (want ${want})`);
+}
+for (const [name, want] of REAL) {
+  total++; const r = classifyItem(name, ctx);
+  const got = r.subKey ?? r.categoryKey ?? null;
+  if (got === want) pass++;
+  else console.log(`FAIL real  ${name} -> ${got} (want ${want})`);
 }
 for (const [name, want] of TOP) {
   total++; const r = classifyItem(name, ctx);
