@@ -86,6 +86,10 @@ export const SUB_CATEGORIES: SubCategory[] = [
       'こしひかり', 'あきたこまち', 'ひとめぼれ', 'ななつぼし', 'ゆめぴりか', 'はえぬき',
       'ささにしき', 'つや姫', 'むすび', '無洗米', 'げんまい', '玄米', 'はくまい', '白米', 'うどん', 'そば', 'そうめん', 'ぱすた',
       'すぱげってぃ', 'らーめん', '小麦粉', 'こむぎこ', '米粉', '片栗粉', 'おーとみーる',
+      // Instant noodles, by product and by the brands that dominate the shelf.
+      '日清', 'にっしん', 'かっぷ', 'かっぷめん', 'いんすたんと', 'やきそば',
+      'まるちゃん', 'さっぽろいちばん', 'ちきんらーめん', 'どんべえ', 'あっさり',
+      'cup noodle', 'cupnoodle', 'instant noodle', 'ramen', 'maggi',
       'しりある', 'もち', '餅', 'めん', '麺',
       'rice', 'basmati', 'atta', 'flour', 'maida', 'wheat', 'dal', 'daal', 'lentil', 'toor',
       'moong', 'chana', 'rajma', 'chickpea', 'idli', 'idly', 'dosa', 'batter', 'rava',

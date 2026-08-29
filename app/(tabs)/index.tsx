@@ -157,15 +157,21 @@ export default function ChatScreen() {
       if (!shot) return;
 
       /**
-       * The phone reads it first.
+       * The vision model reads it first.
        *
-       * ML Kit is free, works offline, has no daily cap and answers in well
-       * under a second. The cloud model is only asked when the on-device text
-       * does not look like a receipt, which is what keeps the free quota for
-       * the cases that actually need it.
+       * ML Kit was primary until a real receipt showed what it does to dense
+       * thermal print: 日清あっさりシーフード came back as ヘ年 and 51a-、口700M,
+       * and items were missed entirely. It stays as the fallback because it
+       * works offline and after the daily quota is gone — worse names, but a
+       * scan that still happens.
        */
-      let receipt = await readReceiptOnDevice(shot.uri);
-      if (!receipt) receipt = await readReceipt(shot.dataUrl);
+      let receipt: Awaited<ReturnType<typeof readReceipt>> | null = null;
+      try {
+        receipt = await readReceipt(shot.dataUrl);
+      } catch (cloudError) {
+        receipt = await readReceiptOnDevice(shot.uri);
+        if (!receipt) throw cloudError;
+      }
       if (!receipt.items.length) {
         setScanError('No line items found. Try a straighter, brighter photo, with the whole receipt in frame.');
         return;

@@ -162,9 +162,16 @@ export function ItemsEditor({
       const shot = source === 'camera' ? await captureReceipt() : await pickReceipt();
       if (!shot) return; // backed out
 
-      // On-device first; the cloud model only when that cannot make sense of it.
-      let receipt = await readReceiptOnDevice(shot.uri);
-      if (!receipt) receipt = await readReceipt(shot.dataUrl);
+      // The vision model first; ML Kit only when it is unreachable or the
+      // daily quota is gone. ML Kit's reading of dense thermal print is poor
+      // enough that it is a fallback, not a first choice.
+      let receipt: Awaited<ReturnType<typeof readReceipt>> | null = null;
+      try {
+        receipt = await readReceipt(shot.dataUrl);
+      } catch (cloudError) {
+        receipt = await readReceiptOnDevice(shot.uri);
+        if (!receipt) throw cloudError;
+      }
       if (!receipt.items.length) {
         setScanError('No line items found. Try a straighter, brighter photo.');
         return;
