@@ -1,4 +1,4 @@
-import { foldJa, hasJapanese } from './jp';
+import { foldJa, hasJapanese, stripDakuten } from './jp';
 import { SUB_CATEGORIES, type SubCategory } from './items';
 
 /**
@@ -36,7 +36,32 @@ export type ClassifyContext = {
 
 type Entry = { subKey: string | null; categoryKey: string | null; word: string };
 
-let cache: { key: unknown; index: Entry[] } | null = null;
+let cache: { key: unknown; index: Entry[]; bare: Map<string, Entry> } | null = null;
+
+/**
+ * Index of Japanese entries keyed by their dakuten-stripped form.
+ *
+ * Anything that collides once stripped is dropped rather than guessed at, so
+ * adding a keyword can never turn this layer into a source of wrong answers.
+ */
+function buildBareIndex(index: Entry[]): Map<string, Entry> {
+  const seen = new Map<string, Entry | null>();
+  for (const e of index) {
+    if (!hasJapanese(e.word)) continue;
+    const bare = stripDakuten(e.word);
+    if (!seen.has(bare)) {
+      seen.set(bare, e);
+      continue;
+    }
+    const first = seen.get(bare);
+    const sameTarget = first && first.subKey === e.subKey && first.categoryKey === e.categoryKey;
+    if (!sameTarget) seen.set(bare, null); // ambiguous — refuse to guess
+  }
+
+  const out = new Map<string, Entry>();
+  for (const [bare, e] of seen) if (e) out.set(bare, e);
+  return out;
+}
 
 function buildIndex(ctx: ClassifyContext): Entry[] {
   const subs = ctx.subCategories ?? SUB_CATEGORIES;
@@ -62,7 +87,7 @@ function buildIndex(ctx: ClassifyContext): Entry[] {
 
   // Longest first: a specific phrase must beat the generic word inside it.
   entries.sort((a, b) => b.word.length - a.word.length);
-  cache = { key: ctx.categories, index: entries };
+  cache = { key: ctx.categories, index: entries, bare: buildBareIndex(entries) };
   return entries;
 }
 
@@ -116,7 +141,70 @@ export function classifyItem(rawName: string, ctx: ClassifyContext): ItemCategor
   }
 
   /**
-   * 3. fuzzy — for latin only.
+   * 3. dakuten-blind, for Japanese.
+   *
+   * OCR drops the voicing marks first — a real reading returned パナナ for
+   * バナナ and センサイ for センザイ. Comparing stripped forms recovers those
+   * without the licence that general edit distance would give: only the marks
+   * are ignored, every other character must still match exactly.
+   */
+  if (hasJapanese(name)) {
+    const bareIndex = cache?.bare;
+    const bare = stripDakuten(name);
+    const hit = bareIndex?.get(bare);
+    if (hit) return { subKey: hit.subKey, categoryKey: hit.categoryKey, confidence: 0.8, matched: hit.word };
+
+    if (bareIndex) {
+      /**
+       * One missing kana, whole word.
+       *
+       * ギュウニュウ came back as キュウニウ — the marks gone and one small ゅ
+       * lost. Distance 1 on the stripped form recovers it. This stays safe
+       * where general fuzzy did not: せんざい and せんべい are still distance 2
+       * apart once stripped, so detergent cannot become a rice cracker.
+       */
+      let near: Entry | null = null;
+      let ambiguous = false;
+      if (bare.length >= 4) {
+        for (const [key, e] of bareIndex) {
+          if (Math.abs(key.length - bare.length) > 1 || key.length < 4) continue;
+          if (levenshtein(bare, key) > 1) continue;
+          if (near && (near.subKey !== e.subKey || near.categoryKey !== e.categoryKey)) ambiguous = true;
+          if (!near) near = e;
+        }
+      }
+      if (near && !ambiguous) {
+        return { subKey: near.subKey, categoryKey: near.categoryKey, confidence: 0.78, matched: near.word };
+      }
+      /**
+       * Two different answers a single edit away means we genuinely cannot
+       * tell — キュウニウ sits one character from both ギュウニュウ (milk) and
+       * ギュウニク (beef). Stop here rather than falling through to the looser
+       * prefix layer, which would answer "meat" with false confidence. An
+       * uncategorised row asks for one tap; a wrong one is never noticed.
+       */
+      if (ambiguous) return { subKey: null, categoryKey: null, confidence: 0, matched: null };
+
+      /**
+       * Last resort: the name starts with a known word.
+       *
+       * Catches "タマコ 10コ" and "ﾌﾞﾀﾊﾞﾗ" once the size is tacked on. Anchored
+       * to the start deliberately — an unanchored search matched ぎゅう inside
+       * キュウニウ and filed milk as meat.
+       */
+      let prefix: Entry | null = null;
+      for (const [key, e] of bareIndex) {
+        if (key.length < 2 || !bare.startsWith(key)) continue;
+        if (!prefix || key.length > stripDakuten(prefix.word).length) prefix = e;
+      }
+      if (prefix) {
+        return { subKey: prefix.subKey, categoryKey: prefix.categoryKey, confidence: 0.74, matched: prefix.word };
+      }
+    }
+  }
+
+  /**
+   * 4. fuzzy — for latin only.
    *
    * Kana is dense: せんざい (detergent) and せんべい (rice cracker) are one
    * substitution apart and mean entirely different things, so fuzzy matching

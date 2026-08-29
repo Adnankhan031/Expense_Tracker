@@ -109,3 +109,30 @@ export function foldJa(input: string): string {
 export function hasJapanese(input: string): boolean {
   return /[぀-ヿ㐀-鿿ｦ-ﾟ]/.test(input ?? '');
 }
+
+/**
+ * Voiced kana reduced to their base form: が→か, ば→は, ぱ→は.
+ *
+ * OCR loses dakuten and handakuten before it loses anything else — the marks
+ * are two or three pixels on thermal paper. A real reading came back with
+ * パナナ for バナナ, タマコ for タマゴ and センサイ for センザイ, all of which
+ * matched nothing. Comparing stripped forms recovers them.
+ *
+ * This is safe only because no two entries in the shipped dictionary collide
+ * once stripped; `classify` re-checks that at build time rather than trusting
+ * it, so a future keyword cannot quietly introduce a wrong match.
+ */
+const UNVOICED: Record<string, string> = {
+  が: 'か', ぎ: 'き', ぐ: 'く', げ: 'け', ご: 'こ',
+  ざ: 'さ', じ: 'し', ず: 'す', ぜ: 'せ', ぞ: 'そ',
+  だ: 'た', ぢ: 'ち', づ: 'つ', で: 'て', ど: 'と',
+  ば: 'は', び: 'ひ', ぶ: 'ふ', べ: 'へ', ぼ: 'ほ',
+  ぱ: 'は', ぴ: 'ひ', ぷ: 'ふ', ぺ: 'へ', ぽ: 'ほ',
+  ゔ: 'う',
+};
+
+export function stripDakuten(input: string): string {
+  let out = '';
+  for (const ch of input) out += UNVOICED[ch] ?? ch;
+  return out;
+}

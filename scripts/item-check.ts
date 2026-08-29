@@ -8,6 +8,29 @@ import { foldJa } from '../src/jp';
 import { classifyItem } from '../src/classify';
 import { SEED_CATEGORIES } from '../src/seed';
 
+
+/**
+ * Names exactly as a model returned them from a photographed receipt.
+ *
+ * OCR loses the voicing marks first, so these are the degraded forms, not the
+ * correct spellings: パナナ for バナナ, タマコ for タマゴ, センサイ for センザイ.
+ * Recorded from a real 200 response so the dakuten layer cannot regress.
+ */
+const OCR: [string, string | null][] = [
+  ['キャベツ', 'produce'],
+  ['パナナ', 'produce'],            // handakuten where dakuten belongs
+  ['トリモノク 2kg', 'meat'],
+  ['フタタブラ', 'meat'],
+  ['タマコ 10コ', 'dairy'],          // たまこ for たまご, plus a counter
+  ['コシヒカリ 5kg', 'staples'],
+  ['ポーテトチップス', 'snacks'],
+  ['レイトウキョウウサ', 'frozen'],
+  ['センサイ', 'household'],        // せんさい for せんざい — must not be a snack
+  // One edit from both ギュウニュウ (milk) and ギュウニク (beef). Refusing is
+  // the correct answer; guessing "meat" would corrupt the breakdown silently.
+  ['キュウニウ', null],
+];
+
 const ctx = { categories: SEED_CATEGORIES.map((c) => ({ key: c.id, keywords: c.keywords.join('|') })) };
 
 const FOLD: [string, string][] = [
@@ -49,6 +72,12 @@ for (const [name, want] of SUB) {
   total++; const r = classifyItem(name, ctx);
   if (r.subKey === want) pass++;
   else console.log(`FAIL sub   ${name} -> ${r.subKey}/${r.categoryKey} (want ${want})`);
+}
+for (const [name, want] of OCR) {
+  total++; const r = classifyItem(name, ctx);
+  const got = r.subKey ?? r.categoryKey ?? null;
+  if (got === want) pass++;
+  else console.log(`FAIL ocr   ${name} -> ${got} (want ${want})`);
 }
 for (const [name, want] of TOP) {
   total++; const r = classifyItem(name, ctx);
