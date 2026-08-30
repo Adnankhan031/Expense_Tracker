@@ -449,16 +449,21 @@ export default function SettingsScreen() {
               }}
             >
               <Text style={{ color: t.down, fontSize: 12.5, lineHeight: 18, flex: 1 }}>
-                No address set, so this toggle does nothing yet — the cloud is used either way.
-                Start the service on your laptop and put its address below.
+                No address set. The toggle does nothing yet, and nothing can be translated —
+                translation only ever runs here, never in the cloud. Start the service on your
+                laptop and put its address below.
               </Text>
             </View>
           )}
 
           <Text style={{ color: t.faint, fontSize: 11.5, lineHeight: 16, marginTop: space.sm }}>
-            Whichever is chosen, the other is still tried if the first cannot answer, and the phone
-            reads it as a last resort. Translation always uses the laptop when there is one, since
-            that is the job that runs the daily allowance down.
+            This picks who reads the photo. Whichever you choose, the other is tried if the first
+            cannot answer, and the phone reads it as a last resort.
+          </Text>
+          <Text style={{ color: t.faint, fontSize: 11.5, lineHeight: 16, marginTop: 8 }}>
+            Translation is always done here and never in the cloud: reading a receipt is what the
+            cloud model is genuinely better at, and translating short product names is easy work
+            that was quietly using up the daily allowance.
           </Text>
 
           <TextInput

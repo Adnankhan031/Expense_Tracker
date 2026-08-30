@@ -170,11 +170,28 @@ export async function readReceipt(dataUrl: string): Promise<ScannedReceipt> {
 export type TranslationOutcome = {
   translations: Map<string, string>;
   /** Set when some names could not be translated, with the reason why. */
-  problem: 'quota' | 'offline' | 'failed' | null;
+  problem: 'no-laptop' | 'offline' | 'failed' | null;
   /** How many names still have no English form. */
   untranslated: number;
 };
 
+/**
+ * English names for a receipt's items — from the cache, then the laptop.
+ *
+ * The cloud is deliberately never asked. Its daily allowance is small and
+ * reading a receipt is the job that genuinely needs it: the vision model is
+ * both far more accurate and far faster than anything local. Translating a
+ * short product name is easy work that the local model does well, so spending
+ * a rationed request on it was the wrong trade — and it was the reason the
+ * allowance kept running out before the day did.
+ *
+ * Everything already seen comes from the local cache: free, instant, offline,
+ * and permanent. You buy the same things repeatedly, so after a few shops most
+ * of a receipt needs no model at all.
+ *
+ * Never throws. A translation is a nicety, and failing to get one must not
+ * stop a receipt being saved.
+ */
 export async function translateNames(names: string[]): Promise<TranslationOutcome> {
   const result = new Map<string, string>();
   if (!names.length) return { translations: result, problem: null, untranslated: 0 };
@@ -188,90 +205,32 @@ export async function translateNames(names: string[]): Promise<TranslationOutcom
   const missing = [...new Set(names.filter((n) => !result.has(n) && n.trim()))];
   if (!missing.length) return { translations: result, problem: null, untranslated: 0 };
 
-  let problem: TranslationOutcome['problem'] = null;
+  if (!laptopConfig()) {
+    return { translations: result, problem: 'no-laptop', untranslated: missing.length };
+  }
 
-  /**
-   * Translate on the laptop whenever there is one, whichever reader is
-   * preferred for the photo.
-   *
-   * The two jobs are not alike. Reading a receipt genuinely benefits from the
-   * cloud model — it is both more accurate and far faster. Translating a short
-   * product name is easy enough that the local model does it well, and it is
-   * the job that kept exhausting the daily allowance. Spending the quota on
-   * reading and doing translation locally gets the best of each, and is what
-   * stops "the daily limit is used up" appearing while a working local model
-   * sits idle.
-   */
-  if (laptopConfig()) {
+  let problem: TranslationOutcome['problem'] = null;
+  try {
     const local = await translateViaLaptop(missing);
     if (local) {
       const learned: { original: string; en: string }[] = [];
       missing.forEach((original, i) => {
         const en = local[i];
+        // An unchanged string means the model could not read it; not worth caching.
         if (!en || en === original) return;
         result.set(original, en);
         learned.push({ original, en });
       });
       rememberTranslations(learned);
-      const left = names.filter((n) => !result.has(n)).length;
-      if (left === 0) return { translations: result, problem: null, untranslated: 0 };
+    } else {
+      problem = 'failed';
     }
-  }
-
-  try {
-    const { url, key } = supabaseConfig();
-    if (!url || !key) return { translations: result, problem: 'failed', untranslated: missing.length };
-    const { data } = await supabase().auth.getSession();
-    const token = data.session?.access_token ?? key;
-
-    const res = await fetch(`${url}/functions/v1/read-receipt`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, apikey: key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ names: missing }),
-    });
-    if (!res.ok) {
-      problem = res.status === 429 ? 'quota' : 'failed';
-      // The laptop has no quota, so an exhausted cloud allowance is exactly
-      // what it is for. Only tried when one is configured.
-      if (laptopConfig()) {
-        const local = await translateViaLaptop(missing);
-        if (local) {
-          const learned: { original: string; en: string }[] = [];
-          missing.forEach((original, i) => {
-            const en = local[i];
-            if (!en || en === original) return;
-            result.set(original, en);
-            learned.push({ original, en });
-          });
-          rememberTranslations(learned);
-          const left = names.filter((n) => !result.has(n)).length;
-          return { translations: result, problem: left > 0 ? problem : null, untranslated: left };
-        }
-      }
-      return { translations: result, problem, untranslated: missing.length };
-    }
-
-    const body = await res.json();
-    const list: unknown = body?.translations;
-    if (!Array.isArray(list)) {
-      return { translations: result, problem: 'failed', untranslated: missing.length };
-    }
-
-    const learned: { original: string; en: string }[] = [];
-    missing.forEach((original, i) => {
-      const en = list[i];
-      // An unchanged string means the model could not read it; not worth storing.
-      if (typeof en !== 'string' || !en.trim() || en.trim() === original) return;
-      result.set(original, en.trim());
-      learned.push({ original, en: en.trim() });
-    });
-    rememberTranslations(learned);
   } catch {
     problem = 'offline';
   }
 
   const untranslated = names.filter((n) => !result.has(n)).length;
-  return { translations: result, problem: untranslated > 0 ? problem : null, untranslated };
+  return { translations: result, problem: untranslated > 0 ? (problem ?? 'failed') : null, untranslated };
 }
 
 /** Plain wording for why some lines are still in Japanese. */
@@ -279,7 +238,8 @@ export function translationNote(outcome: TranslationOutcome): string | null {
   if (!outcome.problem || outcome.untranslated === 0) return null;
   const n = outcome.untranslated;
   const lines = `${n} ${n === 1 ? 'line is' : 'lines are'} still in Japanese`;
-  if (outcome.problem === 'quota') return `${lines} — the daily translation limit is used up.`;
-  if (outcome.problem === 'offline') return `${lines} — no connection to translate them.`;
-  return `${lines} — translation is unavailable right now.`;
+  if (outcome.problem === 'no-laptop')
+    return `${lines} — set up the laptop service in Settings to translate them.`;
+  if (outcome.problem === 'offline') return `${lines} — the laptop did not answer.`;
+  return `${lines} — the laptop could not translate them.`;
 }
