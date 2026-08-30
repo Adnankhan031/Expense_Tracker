@@ -1,5 +1,5 @@
 import { getSetting, setSetting } from './db';
-import { parseReceiptText } from './receiptText';
+import { looksWrong, parseReceiptText } from './receiptText';
 import type { ScannedReceipt } from './receipt';
 
 /**
@@ -81,16 +81,63 @@ export async function readViaLaptop(dataUrl: string): Promise<ScannedReceipt | n
   const lines: unknown = body?.lines;
   if (!Array.isArray(lines) || lines.length < 4) return null;
 
-  const parsed = parseReceiptText(lines.filter((l): l is string => typeof l === 'string'));
-  if (parsed.items.length < 2) return null;
+  const text = lines.filter((l): l is string => typeof l === 'string');
+  const parsed = parseReceiptText(text);
 
-  return {
+  const receipt: ScannedReceipt = {
     merchant: parsed.merchant,
     purchased_on: parsed.purchased_on,
     total: parsed.total,
     items: parsed.items,
     model: 'laptop (PaddleOCR)',
   };
+
+  // Rules first, model only when they clearly failed.
+  if (!looksWrong(receipt, text.length)) return receipt;
+
+  const viaModel = await extractViaLaptop(text);
+  return viaModel ?? (receipt.items.length >= 2 ? receipt : null);
+}
+
+/**
+ * Structure a receipt with the local model, when the rules could not.
+ *
+ * Deliberately a fallback. The parser is deterministic and provable; a model
+ * that returns nineteen items one run and twenty-one the next cannot be held
+ * to a test. This is for the layouts the rules have never seen.
+ */
+export async function extractViaLaptop(lines: string[]): Promise<ScannedReceipt | null> {
+  if (!lines.length) return null;
+  try {
+    const res = await call('/extract', { lines }, 240000);
+    if (!res.ok) return null;
+
+    const body = await res.json();
+    const raw: unknown = body?.items;
+    if (!Array.isArray(raw) || raw.length < 2) return null;
+
+    const items = raw
+      .filter(
+        (i): i is { name: string; amount: number } =>
+          !!i && typeof i.name === 'string' && Number.isFinite(i.amount)
+      )
+      // The model reports printed yen; the app stores minor units.
+      .map((i) => ({ name: i.name.trim(), amount_minor: Math.round(i.amount * 100) }))
+      .filter((i) => i.name && i.amount_minor !== 0);
+
+    if (items.length < 2) return null;
+
+    const total = Number(body?.total);
+    return {
+      merchant: typeof body?.merchant === 'string' ? body.merchant : null,
+      purchased_on: typeof body?.purchased_on === 'string' ? body.purchased_on : null,
+      total: Number.isFinite(total) && total > 0 ? Math.round(total * 100) : null,
+      items,
+      model: `laptop (${body?.model ?? 'local model'})`,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** Translate on the laptop. Returns null when it cannot help, never throws. */

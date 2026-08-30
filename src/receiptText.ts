@@ -166,3 +166,36 @@ export function parseReceiptText(raw: string[]): ParsedReceipt {
 
   return { merchant, purchased_on, total, items };
 }
+
+/**
+ * Does this reading look right?
+ *
+ * The parser is exact when it recognises a layout and quietly wrong when it
+ * does not — a handful of items found, or a sum nowhere near the printed
+ * total. Both are cheap to detect, and they are the only cases worth spending
+ * a language model on: everything else the rules already get right, faster and
+ * repeatably.
+ */
+export function looksWrong(
+  receipt: { items: { amount_minor: number }[]; total: number | null },
+  lineCount: number
+): boolean {
+  if (receipt.items.length < 2) return true;
+
+  /**
+   * Plenty of text, almost nothing extracted.
+   *
+   * Deliberately loose. A receipt carries a dozen lines of shop name, address,
+   * date, totals and thanks before a single product, so three items from
+   * fifteen lines is an ordinary small shop, not a failure. Only a long
+   * receipt yielding almost nothing is evidence the layout was missed.
+   */
+  if (lineCount >= 20 && receipt.items.length < lineCount * 0.15) return true;
+
+  const total = receipt.total ?? 0;
+  if (total <= 0) return false;
+
+  const sum = receipt.items.reduce((a, i) => a + i.amount_minor, 0);
+  // Tax and discounts leave a real gap, so only a large one is suspicious.
+  return Math.abs(total - sum) > total * 0.4;
+}
