@@ -87,6 +87,14 @@ def ocr():
         # Turning oneDNN off takes the plain CPU path, which works. The
         # FLAGS_use_mkldnn environment variable does not help — PaddleOCR sets
         # its own value over it.
+        # The preprocessing stages are left ON deliberately.
+        #
+        # Turning off doc orientation, unwarping and textline orientation looks
+        # like an easy win — it cuts a warm run from 23s to 20s and the detector
+        # finds 77 text fragments instead of 62. But measured end to end it
+        # produced 15 items instead of 19 and lost the printed total: the extra
+        # fragments are mostly noise, and every one of them is another chance
+        # for two rows to be merged. Three seconds is not worth four items.
         _ocr = PaddleOCR(lang="japan", use_textline_orientation=True, enable_mkldnn=False)
         _ocr_api = "3.x"
     except TypeError:

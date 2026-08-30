@@ -67,6 +67,26 @@ ollama pull qwen2.5:3b
 `llama3.2:3b` and `gemma2:2b` also work. The service refuses fast and says so
 if it is pointed at a model that only reasons.
 
+## Speed
+
+A warm read is about 22 seconds on CPU for a phone-sized receipt. Three things
+were tried to cut it and are worth knowing about before trying them again:
+
+- **Turning off the preprocessing** (doc orientation, unwarping, textline
+  orientation) takes a run from 23s to 20s and makes the detector find 77 text
+  fragments instead of 62 — but end to end it produced *15 items instead of 19*
+  and lost the printed total. The extra fragments are mostly noise, and each
+  one is another chance for two rows to merge. Reverted.
+- **Shrinking the detector input** (`text_det_limit_side_len`) changed nothing
+  measurable: 736, 640 and 512 all landed within a second of the default.
+- **The GPU** would genuinely help, but PaddlePaddle here is the CPU build and
+  the card has 4GB that Ollama is already mostly using. Running both at once
+  does not fit; `OLLAMA_KEEP_ALIVE=0` would free the VRAM between requests at
+  the cost of reloading the model each time.
+
+Since this is the fallback path — the cloud reader is both faster and more
+accurate — 22 seconds is a reasonable price for having no quota at all.
+
 ## Notes on this hardware
 
 **PaddleOCR needs `enable_mkldnn=False`.** PaddlePaddle 3.3.1's PIR executor
