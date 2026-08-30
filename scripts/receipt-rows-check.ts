@@ -29,6 +29,31 @@ const twoColumn: OcrResult = {
   ],
 };
 
+/**
+ * The failure a real photo produced: the price column drifts downward relative
+ * to the names, and a unit-price line sits between two items.
+ *
+ * Before the alignment was fixed, "(¥116 X 2個)" absorbed the ¥600 belonging to
+ * the item below it and every price after that was attached to the wrong row.
+ */
+const skewedWithUnitPrice: OcrResult = {
+  blocks: [
+    {
+      lines: [
+        line('510_日清 あっさりCN', 100, 20),
+        line('(¥116 X 2個)', 137, 119),
+        line('510_混ぜ込み鮭', 187, 20),
+        line('(¥150 X 4個)', 197, 119),
+        line('511_ゴールデンカレー甘口', 210, 20),
+      ],
+    },
+    {
+      // Right column, drifting further down the page as the paper skews.
+      lines: [line('*232', 114, 340), line('*600', 181, 340), line('*642', 213, 340)],
+    },
+  ],
+};
+
 export function runRowChecks(): boolean {
   const rows = rowsFromBlocks(twoColumn);
   let ok = true;
@@ -49,6 +74,22 @@ export function runRowChecks(): boolean {
     if (rows[i] !== want[i]) {
       console.log(`  FAIL row ${i + 1}: ${JSON.stringify(rows[i])}`);
       console.log(`             want ${JSON.stringify(want[i])}`);
+      ok = false;
+    }
+  }
+
+  const skewed = rowsFromBlocks(skewedWithUnitPrice);
+  const wantSkewed = [
+    '510_日清 あっさりCN *232',
+    '(¥116 X 2個)',
+    '510_混ぜ込み鮭 *600',
+    '(¥150 X 4個)',
+    '511_ゴールデンカレー甘口 *642',
+  ];
+  for (let i = 0; i < Math.max(skewed.length, wantSkewed.length); i++) {
+    if (skewed[i] !== wantSkewed[i]) {
+      console.log(`  FAIL skew row ${i + 1}: ${JSON.stringify(skewed[i])}`);
+      console.log(`                  want ${JSON.stringify(wantSkewed[i])}`);
       ok = false;
     }
   }
