@@ -130,10 +130,23 @@ async def ask(prompt: str, timeout: float) -> str:
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             res = await client.post(f"{OLLAMA}/api/generate", json=payload)
-            res.raise_for_status()
-            body = res.json()
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"Ollama unreachable: {exc}") from exc
+        raise HTTPException(
+            status_code=502,
+            detail=f"Ollama is not answering at {OLLAMA}. Is it running? ({exc})",
+        ) from exc
+
+    # A 404 here means the model is missing, not that Ollama is down — a
+    # distinction worth making, because the fix is one command.
+    if res.status_code == 404:
+        raise HTTPException(
+            status_code=503,
+            detail=f"The model '{MODEL}' is not installed. Run:  ollama pull {MODEL}",
+        )
+    if res.status_code >= 400:
+        raise HTTPException(status_code=502, detail=f"Ollama returned {res.status_code}.")
+
+    body = res.json()
 
     answer = strip_thinking(body.get("response", ""))
     if answer:
