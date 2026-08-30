@@ -4,3 +4,7 @@ server/.venv/
 models/
 uploads/
 data/
+__pycache__/
+*.pyc
+smoke_report.txt
+rows.txt

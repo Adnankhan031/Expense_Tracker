@@ -47,7 +47,33 @@ cloudflared tunnel --url http://localhost:8756
 Put the printed https URL and your `SPENDLY_KEY` into the app under
 **Settings → Laptop service**, then press **Test**.
 
+## The model matters more than the size
+
+**Do not use `qwen3:4b`.** It is a reasoning model, and it reasons whether or
+not you ask it to — `think: false`, `/no_think`, and the chat endpoint's own
+flag are all ignored by Ollama 0.33.2, which only changes *where* the reasoning
+is reported. Measured here: translating eight short product names produced
+8,776 characters of deliberation over 2,500 tokens in 133 seconds and still
+never reached an answer. Speed is not the problem — it runs at about 21
+tokens/second — it simply never stops.
+
+Use an instruct model:
+
+```bat
+ollama pull qwen2.5:3b
+```
+
+`qwen2.5:3b` is strong on Japanese and fits the 4GB card comfortably.
+`llama3.2:3b` and `gemma2:2b` also work. The service refuses fast and says so
+if it is pointed at a model that only reasons.
+
 ## Notes on this hardware
+
+**PaddleOCR needs `enable_mkldnn=False`.** PaddlePaddle 3.3.1's PIR executor
+cannot convert a oneDNN attribute the text-detection model uses, and inference
+dies with `ConvertPirAttribute2RuntimeAttribute not support`. Turning oneDNN
+off takes the plain CPU path, which works. The `FLAGS_use_mkldnn` environment
+variable does not help — PaddleOCR overrides it.
 
 **PaddleOCR stays on CPU.** The RTX 3050 has 4GB and Qwen3 4B is already using
 most of it — the `33%/67% CPU/GPU` split Ollama reports means it does not

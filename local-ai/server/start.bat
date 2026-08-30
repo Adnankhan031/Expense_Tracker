@@ -6,7 +6,10 @@ REM A tunnel is a public address, so without this anyone who finds the URL can
 REM use your laptop. Put the same value into the app under Settings.
 
 set SPENDLY_KEY=change-me-to-something-long
-set SPENDLY_MODEL=qwen3:4b
+REM NOT qwen3:4b. It is a reasoning model and reasons no matter what you pass;
+REM translating eight product names took 133 seconds and never produced an
+REM answer. Use an instruct model. If this one is missing:  ollama pull qwen2.5:3b
+set SPENDLY_MODEL=qwen2.5:3b
 set OLLAMA_URL=http://127.0.0.1:11434
 
 cd /d "%~dp0"

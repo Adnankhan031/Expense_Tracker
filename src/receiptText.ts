@@ -55,7 +55,10 @@ const QUANTITY_LINE =
   /^\s*\(?\s*(?:[¥￥]?\s*[\d,]+\s*[x×✕*]\s*\d+\s*[点個コこ]?|\d+\s*[点個コこ]?\s*[x×✕*]\s*[¥￥]?\s*[\d,]+)\s*\)?\s*$/i;
 
 /** Till codes printed before the product name: "510_", "#514_", "514.". */
-const PRODUCT_CODE = /^[#■]?\s*\d{2,4}[_.\-\s]\s*/;
+// Two shapes: "510_" with a separator, and "511コ" where the code runs
+// straight into the name. The separator form must win even when the name
+// itself starts with a digit, as "520_7Pツイストドーナツ" does.
+const PRODUCT_CODE = /^[#■]?\s*\d{3}(?:[_.\-\s]\s*|(?=[ァ-ヿ぀-ゟ一-鿿]))/;
 
 /**
  * A unit-price group that landed on the item's own row: "(¥344 X 2個)".
@@ -121,9 +124,24 @@ function dateIn(text: string): string | null {
 export function parseReceiptText(raw: string[]): ParsedReceipt {
   const lines = raw.map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
 
-  // The shop name is the first line carrying no digits — receipts put it at the
-  // top, above an address that always has numbers in it.
-  const merchant = lines.slice(0, 6).find((l) => !/\d/.test(l) && l.length >= 2) ?? null;
+  /**
+   * The shop name, not the slogan above it.
+   *
+   * Requiring only "no digits" picked 毎日のお買い物をラクラクに — a marketing
+   * line — as the merchant. A shop name is short and has no sentence
+   * particles; anything long enough to be a sentence is not one.
+   */
+  const merchant =
+    lines
+      .slice(0, 8)
+      .find(
+        (l) =>
+          !/\d/.test(l) &&
+          l.length >= 2 &&
+          l.length <= 14 &&
+          !/[をがはにでとへやねよ。、！!？?]/.test(l) &&
+          !/ください|ませ|ありがとう|領収|领収/.test(l)
+      ) ?? null;
 
   let purchased_on: string | null = null;
   for (const l of lines) {

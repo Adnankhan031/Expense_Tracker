@@ -37,7 +37,17 @@ from pydantic import BaseModel
 # can reach my laptop" and "anyone can" is that nobody has guessed the URL yet.
 SHARED_SECRET = os.environ.get("SPENDLY_KEY", "")
 OLLAMA = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
-MODEL = os.environ.get("SPENDLY_MODEL", "qwen3:4b")
+# qwen3:4b is NOT usable here, despite being the obvious choice. It is a
+# reasoning model and reasons unconditionally: `think: false`, `/no_think` and
+# the chat endpoint's own flag are all ignored by Ollama 0.33.2, which only
+# changes where the reasoning is reported, not whether it happens. Measured on
+# this machine, translating eight short product names produced 8,776 characters
+# of deliberation across 2,500 tokens in 133 seconds and still never reached an
+# answer. Raw speed is fine at ~21 tokens/second; it simply never stops.
+#
+# Use an instruct model that does not reason. qwen2.5:3b is the natural fit for
+# Japanese; llama3.2:3b and gemma2:2b also work.
+MODEL = os.environ.get("SPENDLY_MODEL", "qwen2.5:3b")
 
 app = FastAPI(title="Spendly local service")
 app.add_middleware(
@@ -69,10 +79,18 @@ def ocr():
     from paddleocr import PaddleOCR
 
     try:
-        _ocr = PaddleOCR(lang="japan", use_textline_orientation=True)
+        # enable_mkldnn=False is not optional on this stack. PaddlePaddle 3.3.1's
+        # PIR executor cannot convert a oneDNN attribute the text-detection model
+        # uses, and inference dies with:
+        #   NotImplementedError: ConvertPirAttribute2RuntimeAttribute not support
+        #   [pir::ArrayAttribute<pir::DoubleAttribute>]
+        # Turning oneDNN off takes the plain CPU path, which works. The
+        # FLAGS_use_mkldnn environment variable does not help — PaddleOCR sets
+        # its own value over it.
+        _ocr = PaddleOCR(lang="japan", use_textline_orientation=True, enable_mkldnn=False)
         _ocr_api = "3.x"
     except TypeError:
-        _ocr = PaddleOCR(lang="japan", use_angle_cls=True, show_log=False)
+        _ocr = PaddleOCR(lang="japan", use_angle_cls=True, show_log=False, enable_mkldnn=False)
         _ocr_api = "2.x"
     return _ocr
 
@@ -93,8 +111,13 @@ def strip_thinking(text: str) -> str:
     return re.sub(r"</?think>", "", text, flags=re.IGNORECASE).strip()
 
 
+# Long enough for a real answer, short enough that a reasoning model's endless
+# deliberation is reported as a problem instead of hanging the phone.
+MAX_TOKENS = int(os.environ.get("SPENDLY_MAX_TOKENS", "1200"))
+
+
 async def ask(prompt: str, timeout: float) -> str:
-    """One call to the local model, with thinking off and room for a long receipt."""
+    """One call to the local model, capped so it cannot deliberate for ever."""
     payload = {
         "model": MODEL,
         "prompt": prompt,
@@ -102,15 +125,33 @@ async def ask(prompt: str, timeout: float) -> str:
         # Qwen3 honours this; older builds ignore it, hence strip_thinking too.
         "think": False,
         # The default 4096 is not enough for a forty-line receipt plus its reply.
-        "options": {"temperature": 0, "num_ctx": 8192},
+        "options": {"temperature": 0, "num_ctx": 8192, "num_predict": MAX_TOKENS},
     }
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             res = await client.post(f"{OLLAMA}/api/generate", json=payload)
             res.raise_for_status()
-            return strip_thinking(res.json().get("response", ""))
+            body = res.json()
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"Ollama unreachable: {exc}") from exc
+
+    answer = strip_thinking(body.get("response", ""))
+    if answer:
+        return answer
+
+    # An empty answer after a full budget means the model spent it thinking.
+    # Say so plainly: no amount of retrying fixes a reasoning model here.
+    thinking = body.get("thinking") or ""
+    if thinking or body.get("done_reason") == "length":
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"{MODEL} used its whole budget reasoning and never answered. "
+                "Reasoning models cannot be used here — try an instruct model "
+                "such as qwen2.5:3b, and set SPENDLY_MODEL to it."
+            ),
+        )
+    return ""
 
 
 class ReadRequest(BaseModel):
@@ -175,45 +216,124 @@ def fragments(result: Any) -> list[dict]:
     return out
 
 
+PRICE_ONLY = re.compile(r"^[*¥￥\s]*[\d,.]+\s*[)）]?$")
+NOT_A_PRODUCT = re.compile(r"担当者|領収|领収|毎日|簡単|ぜひ|レジ|TEL|電話")
+
+
 def rows_from_fragments(items: list[dict]) -> list[str]:
     """
     Rebuild the receipt's rows from where the text physically sits.
 
-    A receipt is two columns — names left, prices right — and OCR returns
-    fragments in its own order. Reading them as they come gives every name and
-    then every price, which is how a ¥1,160 line ends up as "*1," with its
-    amount attached to nothing. Grouping by vertical overlap restores the rows
-    the paper actually has.
+    A receipt is two columns, names left and prices right, and OCR returns
+    fragments in its own order. Three things make naive grouping fail, and all
+    three showed up on a real photo:
+
+    1. Photos are skewed. The price column drifted from 10px above its name at
+       the top of the page to 16px below it at the bottom, so "nearest centre"
+       hands a price to the wrong row.
+    2. Assignments must not cross. Matching greedily let row N take price N+1
+       while row N+1 took price N.
+    3. Unit-price lines — "(¥116 × 2個)" — carry no price of their own. Left
+       eligible they absorb the price belonging to the item below and shift
+       every pairing down the page by one. This was the largest single cause.
+
+    So: group the left column into rows, then align rows to prices with a
+    dynamic program that can skip either side but never reorder. Order is the
+    one thing a skewed photo cannot disturb.
     """
     if not items:
         return []
 
     heights = sorted(i["height"] for i in items)
     median = heights[len(heights) // 2] or 1.0
-    tolerance = median * 0.6
 
-    items = sorted(items, key=lambda i: i["top"])
+    def centre(f: dict) -> float:
+        return f["top"] + f["height"] / 2
+
+    right_edge = max(f["left"] for f in items)
+    prices = sorted(
+        (f for f in items if PRICE_ONLY.match(f["text"].strip()) and f["left"] >= right_edge * 0.6),
+        key=lambda f: f["top"],
+    )
+    price_ids = {id(p) for p in prices}
+    names = [f for f in items if id(f) not in price_ids]
+
+    # Group the left-hand column into rows. 0.35 of a line height was measured
+    # on a real receipt as the point where rows stop merging into each other.
     rows: list[list[dict]] = []
-    for it in items:
-        centre = it["top"] + it["height"] / 2
-        if rows:
-            row = rows[-1]
-            row_centre = sum(r["top"] + r["height"] / 2 for r in row) / len(row)
-            if abs(centre - row_centre) <= tolerance:
-                row.append(it)
-                continue
-        rows.append([it])
+    for f in sorted(names, key=lambda f: f["top"]):
+        if rows and abs(centre(f) - centre(rows[-1][0])) <= median * 0.35:
+            rows[-1].append(f)
+            continue
+        rows.append([f])
+
+    def row_centre(row: list[dict]) -> float:
+        return sum(centre(f) for f in row) / len(row)
+
+    def can_hold_a_price(row: list[dict]) -> bool:
+        text = " ".join(f["text"] for f in row)
+        if "×" in text or " x " in text.lower():
+            return False
+        return not NOT_A_PRODUCT.search(text)
+
+    eligible = [i for i, r in enumerate(rows) if can_hold_a_price(r)]
+    candidates = [rows[i] for i in eligible]
+
+    pairs: dict[int, int] = {}
+    if candidates and prices:
+        R, P = len(candidates), len(prices)
+        inf = float("inf")
+        skip = median * 0.9
+        cost = [[inf] * (P + 1) for _ in range(R + 1)]
+        back: list[list[Any]] = [[None] * (P + 1) for _ in range(R + 1)]
+        cost[0][0] = 0.0
+
+        for i in range(R + 1):
+            for j in range(P + 1):
+                here = cost[i][j]
+                if here == inf:
+                    continue
+                if i < R and here + skip < cost[i + 1][j]:
+                    cost[i + 1][j] = here + skip
+                    back[i + 1][j] = (i, j, None)
+                if j < P and here + skip < cost[i][j + 1]:
+                    cost[i][j + 1] = here + skip
+                    back[i][j + 1] = (i, j, None)
+                if i < R and j < P:
+                    d = abs(row_centre(candidates[i]) - centre(prices[j]))
+                    if d <= median * 1.5 and here + d < cost[i + 1][j + 1]:
+                        cost[i + 1][j + 1] = here + d
+                        back[i + 1][j + 1] = (i, j, (i, j))
+
+        matched: dict[int, int] = {}
+        i, j = R, P
+        while (i, j) != (0, 0) and back[i][j] is not None:
+            pi, pj, m = back[i][j]
+            if m:
+                matched[m[0]] = m[1]
+            i, j = pi, pj
+        pairs = {eligible[k]: v for k, v in matched.items()}
+
+    taken = set(pairs.values())
+    built: list[tuple[float, str]] = []
+    for ri, row in enumerate(rows):
+        cells = list(row) + ([prices[pairs[ri]]] if ri in pairs else [])
+        cells.sort(key=lambda f: f["left"])
+        built.append((min(f["top"] for f in cells), " ".join(f["text"] for f in cells)))
+    for pj, p in enumerate(prices):
+        if pj not in taken:
+            built.append((p["top"], p["text"]))
 
     out = []
-    for row in rows:
-        row.sort(key=lambda i: i["left"])
-        text = " ".join(r["text"] for r in row)
+    for _top, text in sorted(built, key=lambda t: t[0]):
         # OCR splits "1,160" into "1," and "160"; a comma before exactly three
         # digits is a thousands separator, so close it up.
-        text = re.sub(r"(\d),\s+(?=\d{3}(?!\d))", r"\1,", text)
-        text = re.sub(r"([¥￥])\s+(?=\d)", r"\1", text)
-        out.append(re.sub(r"\s+", " ", text).strip())
-    return [r for r in out if r]
+        text = re.sub(r"(\d),\s+(?=\d{3}(?!\d))", r",", text)
+        text = re.sub(r"([¥￥])\s+(?=\d)", r"", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        if text:
+            out.append(text)
+    return out
 
 
 @app.post("/read")

@@ -16,6 +16,21 @@ from pathlib import Path
 
 import server
 
+# The Windows console is cp1252 and cannot print Japanese; without this the
+# script dies on its own output after the work has already succeeded.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:  # noqa: BLE001
+    pass
+
+REPORT = Path("smoke_report.txt")
+_lines: list[str] = []
+
+
+def say(text: str = "") -> None:
+    _lines.append(text)
+    print(text)
+
 
 async def main() -> None:
     path = Path(sys.argv[1] if len(sys.argv) > 1 else "receipt.jpg")
@@ -23,16 +38,16 @@ async def main() -> None:
         print(f"No such file: {path}")
         raise SystemExit(1)
 
-    print(f"Reading {path.name} ...")
+    say(f"Reading {path.name} ...")
     started = time.time()
     data = base64.b64encode(path.read_bytes()).decode()
     result = server.read(server.ReadRequest(image=data), x_spendly_key=None)
     rows = result["lines"]
     print(f"  {result['engine']} returned {len(rows)} rows in {time.time() - started:.1f}s\n")
     for r in rows[:40]:
-        print(f"    {r}")
+        say(f"    {r}")
     if len(rows) > 40:
-        print(f"    ... {len(rows) - 40} more")
+        say(f"    ... {len(rows) - 40} more")
 
     names = [r for r in rows if any("\u3040" <= c <= "\u30ff" or "\u4e00" <= c <= "\u9fff" for c in r)][:8]
     if not names:
@@ -44,9 +59,13 @@ async def main() -> None:
     out = await server.translate(server.TranslateRequest(names=names), x_spendly_key=None)
     print(f"  done in {time.time() - started:.1f}s (parsed={out.get('parsed')})\n")
     for before, after in zip(names, out["translations"]):
-        print(f"    {before}")
-        print(f"      -> {after}")
+        say(f"    {before}")
+        say(f"      -> {after}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    finally:
+        REPORT.write_text(chr(10).join(_lines), encoding="utf-8")
+        print("report written to " + str(REPORT))

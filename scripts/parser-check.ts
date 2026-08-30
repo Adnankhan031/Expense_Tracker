@@ -17,6 +17,7 @@ import { runReceiptTextChecks } from './receipt-text-check';
 import { runRealReceiptChecks } from './receipt-real-check';
 import { runRowChecks } from './receipt-rows-check';
 import { runSanityChecks } from './receipt-sanity-check';
+import { runLocalOcrChecks } from './receipt-local-check';
 
 const categories: Category[] = SEED_CATEGORIES.map((c, i) => ({
   // ids are uuids in the app; the slug lives on `key`. The corpus asserts on the
@@ -137,6 +138,10 @@ const items = runItemChecks();
 
 if (items.pass !== items.total) {
   console.log('Item checks failed.');
+  process.exit(1);
+}
+
+if (!runLocalOcrChecks()) {
   process.exit(1);
 }
 

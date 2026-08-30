@@ -32,9 +32,14 @@ export function rowsFromBlocks(result: OcrResult): string[] {
 
   const heights = placed.map((l) => l.frame!.height).sort((a, b) => a - b);
   const medianHeight = heights[Math.floor(heights.length / 2)] || 1;
-  // Half a line's height: tall enough to survive a slightly skewed photo,
-  // tight enough that two printed rows never merge into one.
-  const tolerance = medianHeight * 0.5;
+
+  /**
+   * Tuned on a real 44-item receipt against both ways of being wrong: rows
+   * merged together, and prices orphaned from their names. 0.40–0.45 of a line
+   * height is the band where both are zero — 0.6 merged thirteen rows into
+   * their neighbours, and 0.3 tore three prices away from their products.
+   */
+  const tolerance = medianHeight * 0.42;
 
   const sorted = [...placed].sort((a, b) => a.frame!.top - b.frame!.top);
   const rows: (typeof sorted)[] = [];
@@ -42,11 +47,12 @@ export function rowsFromBlocks(result: OcrResult): string[] {
   for (const line of sorted) {
     const centre = line.frame!.top + line.frame!.height / 2;
     const row = rows[rows.length - 1];
-    const rowCentre = row
-      ? row.reduce((a, l) => a + l.frame!.top + l.frame!.height / 2, 0) / row.length
-      : null;
+    // Anchored on the row's first line rather than a running average: the
+    // average drifts downward as lines are added and starts swallowing the
+    // row beneath.
+    const anchor = row ? row[0].frame!.top + row[0].frame!.height / 2 : null;
 
-    if (row && rowCentre !== null && Math.abs(centre - rowCentre) <= tolerance) row.push(line);
+    if (row && anchor !== null && Math.abs(centre - anchor) <= tolerance) row.push(line);
     else rows.push([line]);
   }
 
