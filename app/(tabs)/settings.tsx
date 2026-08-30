@@ -449,9 +449,9 @@ export default function SettingsScreen() {
               }}
             >
               <Text style={{ color: t.down, fontSize: 12.5, lineHeight: 18, flex: 1 }}>
-                No address set. The toggle does nothing yet, and nothing can be translated —
-                translation only ever runs here, never in the cloud. Start the service on your
-                laptop and put its address below.
+                No address set, so this toggle does nothing yet and the cloud is used for both
+                reading and translating. That still works — it just spends two of the fifty daily
+                requests per receipt instead of one.
               </Text>
             </View>
           )}
@@ -461,9 +461,9 @@ export default function SettingsScreen() {
             cannot answer, and the phone reads it as a last resort.
           </Text>
           <Text style={{ color: t.faint, fontSize: 11.5, lineHeight: 16, marginTop: 8 }}>
-            Translation is always done here and never in the cloud: reading a receipt is what the
-            cloud model is genuinely better at, and translating short product names is easy work
-            that was quietly using up the daily allowance.
+            Translation prefers this laptop, because it is free and unlimited. Without one the
+            cloud translates instead, which costs a second request per receipt — about
+            twenty-five receipts a day, and every translation is cached for ever.
           </Text>
 
           <TextInput
