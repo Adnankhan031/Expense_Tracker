@@ -1,0 +1,6 @@
+# The virtualenv is thousands of files and the models are gigabytes.
+# Neither belongs in git, and receipts are personal.
+server/.venv/
+models/
+uploads/
+data/

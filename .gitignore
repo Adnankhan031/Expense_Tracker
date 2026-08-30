@@ -44,11 +44,3 @@ yarn-error.*
 .expo-export/
 .tmp-*
 dist/
-
-# Local AI service: virtualenv, models and receipt photos stay off git.
-# The venv is thousands of files, and receipts are personal.
-local-ai/server/.venv/
-local-ai/models/
-local-ai/uploads/
-local-ai/data/
-uploads/
