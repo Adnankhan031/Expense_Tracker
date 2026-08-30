@@ -7,7 +7,7 @@ import { parseReceiptText } from './receiptText';
 import { rowsFromBlocks } from './receiptRows';
 import { cachedTranslations, rememberTranslations } from './db';
 import { foldJa } from './jp';
-import { laptopConfig, preferCloud, translateViaLaptop } from './laptop';
+import { laptopConfig, translateViaLaptop } from './laptop';
 import { supabase, supabaseConfig } from './supabase';
 
 export type ScannedItem = { name: string; amount_minor: number; qty?: number };
@@ -191,12 +191,18 @@ export async function translateNames(names: string[]): Promise<TranslationOutcom
   let problem: TranslationOutcome['problem'] = null;
 
   /**
-   * When the laptop is preferred, ask it first rather than spending a cloud
-   * request to discover the quota is gone. This is why translation kept
-   * reporting "the daily limit is used up" while a working local model sat
-   * idle: the laptop was only ever reached after a cloud failure.
+   * Translate on the laptop whenever there is one, whichever reader is
+   * preferred for the photo.
+   *
+   * The two jobs are not alike. Reading a receipt genuinely benefits from the
+   * cloud model — it is both more accurate and far faster. Translating a short
+   * product name is easy enough that the local model does it well, and it is
+   * the job that kept exhausting the daily allowance. Spending the quota on
+   * reading and doing translation locally gets the best of each, and is what
+   * stops "the daily limit is used up" appearing while a working local model
+   * sits idle.
    */
-  if (!preferCloud() && laptopConfig()) {
+  if (laptopConfig()) {
     const local = await translateViaLaptop(missing);
     if (local) {
       const learned: { original: string; en: string }[] = [];

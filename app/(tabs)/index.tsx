@@ -179,10 +179,20 @@ export default function ChatScreen() {
        */
       let receipt: Awaited<ReturnType<typeof readReceipt>> | null = null;
       let fellBack: string | null = null;
+      let laptopMissing = false;
       const cloudFirst = preferCloud();
 
       const tryCloud = () => readReceipt(shot.dataUrl);
-      const tryLaptop = async () => (laptopConfig() ? readViaLaptop(shot.dataUrl) : null);
+      const tryLaptop = async () => {
+        if (!laptopConfig()) {
+          // Chosen but never configured. Falling through in silence is what
+          // made the setting look broken: the cloud answered, so nothing was
+          // obviously wrong, and the reason was invisible.
+          laptopMissing = true;
+          return null;
+        }
+        return readViaLaptop(shot.dataUrl);
+      };
 
       try {
         receipt = cloudFirst ? await tryCloud() : await tryLaptop();
@@ -223,7 +233,12 @@ export default function ChatScreen() {
           ? `Read on this phone${fellBack ? ` — ${fellBack}` : ''}`
           : `Read by ${receipt.model ?? 'the receipt reader'}`;
 
-      const notes = [readerLabel, translationNote(outcome)].filter(Boolean) as string[];
+      const configNote =
+        laptopMissing && !cloudFirst
+          ? 'No laptop address set — add one in Settings, or the cloud is used anyway.'
+          : null;
+
+      const notes = [readerLabel, configNote, translationNote(outcome)].filter(Boolean) as string[];
       setScanNote(notes.join(String.fromCharCode(10)));
 
       setDraft({

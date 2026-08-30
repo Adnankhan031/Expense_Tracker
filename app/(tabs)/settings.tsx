@@ -437,9 +437,28 @@ export default function SettingsScreen() {
             </View>
           </Pressable>
 
+          {!laptopUrl.trim() && (
+            <View
+              style={{
+                flexDirection: 'row',
+                gap: 10,
+                backgroundColor: t.downSoft,
+                borderRadius: radius.md,
+                padding: 12,
+                marginTop: space.sm,
+              }}
+            >
+              <Text style={{ color: t.down, fontSize: 12.5, lineHeight: 18, flex: 1 }}>
+                No address set, so this toggle does nothing yet — the cloud is used either way.
+                Start the service on your laptop and put its address below.
+              </Text>
+            </View>
+          )}
+
           <Text style={{ color: t.faint, fontSize: 11.5, lineHeight: 16, marginTop: space.sm }}>
             Whichever is chosen, the other is still tried if the first cannot answer, and the phone
-            reads it as a last resort. Leave the address empty to use the cloud and phone only.
+            reads it as a last resort. Translation always uses the laptop when there is one, since
+            that is the job that runs the daily allowance down.
           </Text>
 
           <TextInput
