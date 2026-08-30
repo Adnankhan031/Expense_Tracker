@@ -425,10 +425,15 @@ async def extract(
 TRANSLATE_PROMPT = """You translate Japanese supermarket product names into English.
 
 Reply with ONLY a JSON array of strings, the same length and order as the input.
-Keep each short — what the thing is, as a shopper would say it.
-Keep brand names in romaji. No commentary, no code fences.
-If a name is garbled by OCR, translate what it most likely says; if it is
-unreadable, return it unchanged."""
+
+- Say what the thing IS, briefly, as a shopper would: 牛乳ケーキ -> "Milk Cake".
+- Never substitute a different brand or product. カステラ is a sponge cake
+  called castella, not any other confectionery. If you do not recognise a word,
+  transliterate it rather than guessing at something familiar.
+- Keep Japanese brand names in romaji: 日清 -> "Nissin", QBB -> "QBB".
+- These names come from OCR and may be misspelt. Translate the most likely
+  intended product; if it is unreadable, return the input unchanged.
+- No commentary, no code fences, no explanation."""
 
 
 @app.post("/translate")
