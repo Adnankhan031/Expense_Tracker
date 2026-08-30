@@ -400,6 +400,8 @@ ${tNote}` : '')
         target,
         filled.map((r) => ({
           name: r.name.trim(),
+          // Keep the printed Japanese for matching; the English is only a label.
+          original: r.original?.trim() || null,
           amount_minor: Math.round(Number(r.amount) * 100),
           category_id: r.categoryId,
           confidence: r.auto ? 0.9 : 1,

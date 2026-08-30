@@ -776,7 +776,17 @@ export function rememberTranslations(pairs: { original: string; en: string }[]) 
 /* ------------------------------------------------------------------ */
 
 export type NewTxnItem = {
+  /** What is shown — the English translation when there is one. */
   name: string;
+  /**
+   * What the receipt printed, when `name` has been translated.
+   *
+   * Matching a repeat purchase has to key off the Japanese, because that is
+   * what OCR produces next time. Keying off the English meant a product bought
+   * every week was never recognised twice: it went in as "Milk Cake" and came
+   * back as 牛乳ケーキ.
+   */
+  original?: string | null;
   amount_minor: number;
   qty?: number;
   category_id?: string | null;
@@ -813,7 +823,7 @@ export function replaceItems(transactionId: string, items: NewTxnItem[], userId?
           userId ?? null,
           transactionId,
           it.name,
-          foldJa(it.name),
+          foldJa(it.original || it.name),
           it.qty ?? 1,
           it.amount_minor,
           it.category_id ?? null,
