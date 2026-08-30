@@ -36,7 +36,7 @@ import { Button, Chip, EmptyState, IconBadge, Money, Screen, Sheet, tap, tapSucc
 import { DatePickerSheet } from '../../src/pickers';
 import { TxnEditor } from '../../src/TxnEditor';
 import { ItemsEditor, type ReceiptDraft } from '../../src/ItemsEditor';
-import { laptopConfig, readViaLaptop } from '../../src/laptop';
+import { laptopConfig, preferCloud, readViaLaptop } from '../../src/laptop';
 import {
   captureReceipt,
   pickReceipt,
@@ -169,24 +169,38 @@ export default function ChatScreen() {
        * works offline and after the daily quota is gone — worse names, but a
        * scan that still happens.
        */
+      /**
+       * Whichever reader is preferred first, the other as a fallback.
+       *
+       * The cloud reads a receipt more accurately and in a fraction of the
+       * time, but it is rationed; the laptop is slower and unlimited. The
+       * setting only picks the order — a scan that fails outright is worse
+       * than a slow one, so the other is always tried.
+       */
       let receipt: Awaited<ReturnType<typeof readReceipt>> | null = null;
       let fellBack: string | null = null;
+      const cloudFirst = preferCloud();
+
+      const tryCloud = () => readReceipt(shot.dataUrl);
+      const tryLaptop = async () => (laptopConfig() ? readViaLaptop(shot.dataUrl) : null);
+
       try {
-        receipt = await readReceipt(shot.dataUrl);
-      } catch (cloudError) {
-        // The laptop reads better than the phone does, so it goes second and
-        // ML Kit stays the last resort for when neither is reachable.
-        if (laptopConfig()) {
-          try {
-            receipt = await readViaLaptop(shot.dataUrl);
-          } catch {
-            receipt = null;
-          }
-        }
-        if (!receipt) receipt = await readReceiptOnDevice(shot.uri);
-        if (!receipt) throw cloudError;
-        fellBack = cloudError instanceof Error ? cloudError.message : 'the reader was unavailable';
+        receipt = cloudFirst ? await tryCloud() : await tryLaptop();
+      } catch (e) {
+        fellBack = e instanceof Error ? e.message : 'the first reader failed';
       }
+
+      if (!receipt) {
+        try {
+          receipt = cloudFirst ? await tryLaptop() : await tryCloud();
+        } catch (e) {
+          fellBack = fellBack ?? (e instanceof Error ? e.message : 'both readers failed');
+        }
+      }
+
+      // The phone is the last resort either way: worse names, but always there.
+      if (!receipt) receipt = await readReceiptOnDevice(shot.uri);
+      if (!receipt) throw new Error(fellBack ?? 'Could not read that receipt.');
       if (!receipt.items.length) {
         setScanError('No line items found. Try a straighter, brighter photo, with the whole receipt in frame.');
         return;

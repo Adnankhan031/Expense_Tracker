@@ -14,7 +14,7 @@ import { firstTxnDate } from '../../src/db';
 import { dayLabel } from '../../src/format';
 import { CURRENCIES } from '../../src/currency';
 import { useAuth } from '../../src/auth';
-import { laptopConfig, laptopReachable, saveLaptopConfig } from '../../src/laptop';
+import { laptopConfig, laptopReachable, preferCloud, saveLaptopConfig, setPreferCloud } from '../../src/laptop';
 import { cycleEndFor, cycleLabel, currentCycle } from '../../src/cycle';
 import { todayLocal } from '../../src/format';
 
@@ -30,6 +30,7 @@ export default function SettingsScreen() {
   const [laptopUrl, setLaptopUrl] = useState(savedLaptop?.url ?? '');
   const [laptopKey, setLaptopKey] = useState(savedLaptop?.key ?? '');
   const [laptopState, setLaptopState] = useState<'idle' | 'saved' | 'testing' | 'up' | 'down'>('idle');
+  const [cloudFirst, setCloudFirst] = useState(preferCloud());
 
   const count = totalTxnCount();
   const since = firstTxnDate();
@@ -395,9 +396,50 @@ export default function SettingsScreen() {
         {/* manage */}
         <SectionTitle>Laptop service</SectionTitle>
         <Card>
-          <Text style={{ color: t.dim, fontSize: 12.5, lineHeight: 18 }}>
-            Reads and translates receipts on your own machine when the daily cloud limit runs out.
-            Leave the address empty to use the phone instead.
+          <Pressable
+            onPress={() => {
+              tap();
+              const next = !cloudFirst;
+              setCloudFirst(next);
+              setPreferCloud(next);
+            }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+          >
+            <View
+              style={{
+                width: 46,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: cloudFirst ? t.brand : t.line,
+                justifyContent: 'center',
+                paddingHorizontal: 3,
+              }}
+            >
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  backgroundColor: '#fff',
+                  alignSelf: cloudFirst ? 'flex-end' : 'flex-start',
+                }}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: t.ink, fontSize: 14.5, fontWeight: '600' }}>
+                {cloudFirst ? 'Use the cloud first' : 'Use this laptop first'}
+              </Text>
+              <Text style={{ color: t.dim, fontSize: 11.5, marginTop: 2, lineHeight: 16 }}>
+                {cloudFirst
+                  ? 'Faster and more accurate, but limited to about 50 reads a day.'
+                  : 'Slower — roughly 25 seconds — but unlimited and free.'}
+              </Text>
+            </View>
+          </Pressable>
+
+          <Text style={{ color: t.faint, fontSize: 11.5, lineHeight: 16, marginTop: space.sm }}>
+            Whichever is chosen, the other is still tried if the first cannot answer, and the phone
+            reads it as a last resort. Leave the address empty to use the cloud and phone only.
           </Text>
 
           <TextInput

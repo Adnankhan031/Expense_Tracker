@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Camera, ImagePlus, Plus, Sparkles, X } from 'lucide-react-native';
+import { Camera, CalendarDays, ChevronRight, ImagePlus, Plus, Sparkles, X } from 'lucide-react-native';
 
 import { classifyItem } from './classify';
-import { laptopConfig, readViaLaptop } from './laptop';
+import { laptopConfig, preferCloud, readViaLaptop } from './laptop';
 import { foldJa } from './jp';
 import {
+  addMessage,
   insertTxn,
   knownProducts,
   learnAlias,
@@ -19,6 +20,8 @@ import { useData } from './store';
 import { radius, space, useTheme } from './theme';
 import { Button, Card, Money, Sheet, tap } from './ui';
 import { CategoryIcon } from './icons';
+import { DatePickerSheet } from './pickers';
+import { dayLabel, todayLocal } from './format';
 import {
   captureReceipt,
   pickReceipt,
@@ -102,6 +105,10 @@ export function ItemsEditor({
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanNote, setScanNote] = useState<string | null>(null);
+  // The date the receipt will be filed under, which is the receipt's own date
+  // and often not today. Editable, because a wrong one hides the entry.
+  const [date, setDate] = useState<string>(draft?.date ?? todayLocal());
+  const [showDate, setShowDate] = useState(false);
 
   const byId = useMemo(
     () => new Map<string, Category>([...categories, ...subCategories].map((c) => [c.id, c])),
@@ -167,6 +174,7 @@ export function ItemsEditor({
           };
         })
       );
+      setDate(draft.date);
       return;
     }
 
@@ -216,22 +224,38 @@ export function ItemsEditor({
       // The vision model first; ML Kit only when it is unreachable or the
       // daily quota is gone. ML Kit's reading of dense thermal print is poor
       // enough that it is a fallback, not a first choice.
+      /**
+       * Whichever reader is preferred first, the other as a fallback.
+       *
+       * The cloud reads a receipt more accurately and in a fraction of the
+       * time, but it is rationed; the laptop is slower and unlimited. The
+       * setting only picks the order — a scan that fails outright is worse
+       * than a slow one, so the other is always tried.
+       */
       let receipt: Awaited<ReturnType<typeof readReceipt>> | null = null;
+      let fellBack: string | null = null;
+      const cloudFirst = preferCloud();
+
+      const tryCloud = () => readReceipt(shot.dataUrl);
+      const tryLaptop = async () => (laptopConfig() ? readViaLaptop(shot.dataUrl) : null);
+
       try {
-        receipt = await readReceipt(shot.dataUrl);
-      } catch (cloudError) {
-        // The laptop reads better than the phone does, so it goes second and
-        // ML Kit stays the last resort for when neither is reachable.
-        if (laptopConfig()) {
-          try {
-            receipt = await readViaLaptop(shot.dataUrl);
-          } catch {
-            receipt = null;
-          }
-        }
-        if (!receipt) receipt = await readReceiptOnDevice(shot.uri);
-        if (!receipt) throw cloudError;
+        receipt = cloudFirst ? await tryCloud() : await tryLaptop();
+      } catch (e) {
+        fellBack = e instanceof Error ? e.message : 'the first reader failed';
       }
+
+      if (!receipt) {
+        try {
+          receipt = cloudFirst ? await tryLaptop() : await tryCloud();
+        } catch (e) {
+          fellBack = fellBack ?? (e instanceof Error ? e.message : 'both readers failed');
+        }
+      }
+
+      // The phone is the last resort either way: worse names, but always there.
+      if (!receipt) receipt = await readReceiptOnDevice(shot.uri);
+      if (!receipt) throw new Error(fellBack ?? 'Could not read that receipt.');
       if (!receipt.items.length) {
         setScanError('No line items found. Try a straighter, brighter photo.');
         return;
@@ -320,11 +344,30 @@ ${tNote}` : '')
           amount_minor: draft.total > 0 ? draft.total : Math.round(itemTotal),
           type: 'expense',
           category_id: catId,
-          local_date: draft.date,
+          local_date: date,
           note: draft.merchant,
           source: 'manual',
           confidence: 0.9,
         });
+
+        /**
+         * Put it in the thread, the way a typed entry appears.
+         *
+         * Without this a scanned receipt saved into thin air: it is filed on
+         * the date printed on the paper, which for a receipt photographed
+         * later is not today, so it appeared in neither "Spent today" nor the
+         * chat and could only be found by scrolling History back to the right
+         * month. It looked exactly like nothing had been saved.
+         */
+        addMessage({
+          role: 'user',
+          kind: 'text',
+          text: `Scanned ${draft.merchant ? `${draft.merchant} ` : ''}receipt · ${filled.length} items`,
+          txn_id: null,
+          payload: null,
+        });
+        addMessage({ role: 'app', kind: 'txn', text: '', txn_id: target, payload: null });
+
         onCreated?.(target);
       }
 
@@ -369,6 +412,34 @@ ${tNote}` : '')
   return (
     <>
       <Sheet visible={open} onClose={onClose} title="What was in it?">
+        {!!draft && (
+          <Pressable
+            onPress={() => {
+              tap();
+              setShowDate(true);
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              backgroundColor: date === todayLocal() ? t.sunken : t.brandSoft,
+              borderRadius: radius.md,
+              padding: 12,
+            }}
+          >
+            <CalendarDays size={17} color={date === todayLocal() ? t.dim : t.brand} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: t.ink, fontSize: 14.5, fontWeight: '600' }}>{dayLabel(date)}</Text>
+              <Text style={{ color: t.dim, fontSize: 11.5, marginTop: 1 }}>
+                {date === todayLocal()
+                  ? 'Filed under today'
+                  : 'The date printed on the receipt — tap to change'}
+              </Text>
+            </View>
+            <ChevronRight size={16} color={t.faint} />
+          </Pressable>
+        )}
+
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Button
             title={scanning ? 'Reading…' : 'Scan a receipt'}
@@ -527,6 +598,16 @@ ${tNote}` : '')
           loading={busy}
         />
       </Sheet>
+
+      <DatePickerSheet
+        visible={showDate}
+        value={date}
+        onClose={() => setShowDate(false)}
+        onPick={(d) => {
+          setDate(d);
+          setShowDate(false);
+        }}
+      />
 
       <ItemCategoryPicker
         open={!!picking}

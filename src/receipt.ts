@@ -7,7 +7,7 @@ import { parseReceiptText } from './receiptText';
 import { rowsFromBlocks } from './receiptRows';
 import { cachedTranslations, rememberTranslations } from './db';
 import { foldJa } from './jp';
-import { laptopConfig, translateViaLaptop } from './laptop';
+import { laptopConfig, preferCloud, translateViaLaptop } from './laptop';
 import { supabase, supabaseConfig } from './supabase';
 
 export type ScannedItem = { name: string; amount_minor: number; qty?: number };
@@ -189,6 +189,29 @@ export async function translateNames(names: string[]): Promise<TranslationOutcom
   if (!missing.length) return { translations: result, problem: null, untranslated: 0 };
 
   let problem: TranslationOutcome['problem'] = null;
+
+  /**
+   * When the laptop is preferred, ask it first rather than spending a cloud
+   * request to discover the quota is gone. This is why translation kept
+   * reporting "the daily limit is used up" while a working local model sat
+   * idle: the laptop was only ever reached after a cloud failure.
+   */
+  if (!preferCloud() && laptopConfig()) {
+    const local = await translateViaLaptop(missing);
+    if (local) {
+      const learned: { original: string; en: string }[] = [];
+      missing.forEach((original, i) => {
+        const en = local[i];
+        if (!en || en === original) return;
+        result.set(original, en);
+        learned.push({ original, en });
+      });
+      rememberTranslations(learned);
+      const left = names.filter((n) => !result.has(n)).length;
+      if (left === 0) return { translations: result, problem: null, untranslated: 0 };
+    }
+  }
+
   try {
     const { url, key } = supabaseConfig();
     if (!url || !key) return { translations: result, problem: 'failed', untranslated: missing.length };

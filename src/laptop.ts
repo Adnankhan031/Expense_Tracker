@@ -24,6 +24,22 @@ export function laptopConfig(): LaptopConfig | null {
   return { url, key };
 }
 
+/**
+ * Which reader to try first.
+ *
+ * The cloud is more accurate and much faster but rationed; the laptop is slower
+ * and unlimited. This only sets the order — whichever is chosen, the other is
+ * still tried if the first cannot answer, because a scan that fails entirely
+ * is worse than a slow one.
+ */
+export function preferCloud(): boolean {
+  return (getSetting('reader.preferCloud') ?? '1') !== '0';
+}
+
+export function setPreferCloud(on: boolean) {
+  setSetting('reader.preferCloud', on ? '1' : '0');
+}
+
 export function saveLaptopConfig(url: string, key: string) {
   setSetting('laptop.url', url.trim().replace(/\/+$/, ''));
   setSetting('laptop.key', key.trim());
